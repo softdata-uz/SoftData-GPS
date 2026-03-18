@@ -1,0 +1,315 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+button {
+    cursor: pointer;
+    outline: none;
+    border: none;
+}
+
+.save_cansle_buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 4px;
+}
+
+.add_button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+    height: 40px;
+    font-family: Inter;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: normal;
+    cursor: pointer;
+    width: 100%;
+
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    background: #17B26A;
+    color: #FFFFFF;
+}
+
+.add_button:hover {
+    background: #29B85D;
+    color: #FFFFFF;
+}
+
+.cansle_button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 15px;
+    height: 40px;
+    font-family: Inter;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    cursor: pointer;
+    width: 100%;
+
+
+    border-radius: 8px;
+    border: 1px solid #D5D7DA;
+    background: #FFF;
+    color: #414651;
+
+}
+
+.cansle_button:hover {
+    background: #DB4040;
+    color: #FFFFFF;
+}
+
+.cansle_button1 {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 15px;
+    height: 40px;
+    border-radius: 5px;
+    border: 1px solid #D5D7DA;
+    background: #FFFFFF;
+    color: #414651;
+    font-family: Inter;
+    font-size: 14px;
+    font-style: normal;
+    font-weight: 600;
+    line-height: normal;
+    cursor: pointer;
+}
+
+.cansle_button1:hover {
+    background: #DB4040;
+    color: #FFFFFF;
+}
+
+.search_input {
+    background: #FFFFFF;
+    border: 1px solid #F3F3F3;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.devise_inner_info_top_left .search_input {
+    width: 300px;
+}
+
+@media (max-width: 576px) {
+    .devise_inner_info_top_left .search_input {
+        width: 100%;
+    }
+
+    .add_button {
+        padding: 0 5px;
+        width: 100%;
+    }
+}
+
+.search_button {
+    width: 44px;
+    height: 40px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+    border: none;
+    background: #26BF56 !important;
+}
+
+.search_input input {
+    outline: none;
+    border: none;
+    padding: 0 8px;
+    width: 100%;
+}
+
+input[type='checkbox'] {
+    accent-color: #26BF56 !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+    background-color: #29b85d !important;
+    border-color: #29b85d !important;
+}
+
+.ant-checkbox-indeterminate .ant-checkbox-inner::after {
+    background-color: #29b85d !important;
+}
+
+
+/*----datePeker---*/
+a {
+    color: #25b864;
+}
+
+a:hover {
+    color: #25b864;
+}
+
+.ant-btn-primary {
+    background-color: #29b85d;
+    border-color: #29b85d;
+}
+
+.ant-btn-primary:hover {
+    background-color: #29b85d;
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+    background: #29b85d !important;
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+    border: 1px solid #29b85d;
+}
+
+.ant-pagination-item-active {
+    border-color: #29b85d;
+}
+.ant-pagination{
+    align-items: center;
+}
+.ant-pagination-item{
+    /*height: 40px!important;*/
+    /*display: flex!important;*/
+    /*align-items: center!important;*/
+    /*justify-content: center!important;*/
+    /*width: 40px;*/
+
+}
+.ant-pagination-item:hover {
+    border-color: #29b85d;
+}
+
+.ant-pagination-next:hover .ant-pagination-item-link {
+    color: #29b85d;
+    border-color: #29b85d;
+}
+
+.ant-pagination-prev:hover .ant-pagination-item-link {
+    color: #29b85d;
+    border-color: #29b85d;
+}
+
+
+.ant-select {
+    height: 40px;
+}
+
+.ant-select-selector {
+    border: 1px solid #d9d9d9;
+    background: #ffffff;
+}
+
+/*ant-input*/
+.ant-input {
+    height: 40px !important;
+}
+
+.ant-input-password {
+    height: 40px !important;
+    display: flex;
+    align-items: center;
+}
+
+:where(.css-ktlcsa).ant-form-item {
+    margin-bottom: 12px !important;
+}
+
+:where(.css-dev-only-do-not-override-ktlcsa).ant-form-item {
+    margin-bottom: 12px !important;
+}
+
+:where(.css-dev-only-do-not-override-ktlcsa).ant-picker-outlined {
+    width: 100% !important;
+}
+
+:where(.css-ktlcsa).ant-picker {
+    width: 100% !important;
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #29b85d;
+    border-radius: 30px;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+    box-shadow: 0 0 0px 1000px white inset !important;
+    -webkit-text-fill-color: #000 !important;
+    transition: background-color 5000s ease-in-out 0s !important;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-internal-autofill-selected {
+    transition: background-color 9999s ease-in-out 0s;
+    -webkit-box-shadow: 0 0 0 1000px #fff inset !important;
+    box-shadow: 0 0 0 1000px #fff inset !important;
+    -webkit-text-fill-color: #000 !important;
+}
+
+/*ant-input*/
+
+
+/*modal*/
+.myModal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 0px solid #ccc;
+    background: #FFFFFF;
+    overflow: auto;
+    outline: none;
+    border-radius: 12px;
+    z-index: 1;
+
+}
+
+.myOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 1000;
+}
+
+.ReactModal__Overlay {
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+}
+
+.ReactModal__Overlay--after-open {
+    opacity: 1;
+}
+
+.ReactModal__Overlay--before-close {
+    opacity: 0;
+}
+

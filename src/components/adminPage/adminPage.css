@@ -1,0 +1,117 @@
+.information_content{
+    padding: 24px;
+    background: #F7F7F8;
+}
+
+.information_content_info {
+    height: calc(100vh - 198px);
+    background: #FFFFFF;
+    border-radius: 10px;
+    padding: 24px;
+}
+.admin_table {
+    height: calc(100vh - 246px);
+    overflow-y: auto;
+}
+
+
+/*AcsessTable*/
+
+.table_user_cell {
+    display: flex;
+    align-items: center;
+    grid-column-gap: 5px;
+
+}
+.table_user_cell_img{
+    /*width: 40px;*/
+    border-radius: 20px;
+    margin-right: 5px;
+    width: 35px!important;
+    height: 35px!important;
+}
+.table_user_cell .ant-image-mask {
+    border-radius: 90px;
+}
+
+.table_item_image_wrapper {
+    width: 40px;
+    height: 40px;
+    background-color: rgb(255, 255, 255);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.table_round_img{
+    max-width: 100%;
+    max-height: 100%;
+}
+
+
+.edit_button {
+    width: 45px;
+    height: 35px;
+    color: #29B85D;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 35px;
+    cursor: pointer;
+    /*margin: 0 auto;*/
+}
+
+
+.edit_button:hover {
+    background-color: #29B85D;
+    color: #FFFFFF;
+    opacity: 0.9;
+    cursor: pointer;
+}
+
+.devise_inner_pagination_left {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    height: 60px;
+    background: #FFFFFF;
+    border-radius: 10px;
+    padding: 0 16px;
+}
+.pagination_total{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.add_admin{
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 10px;
+}
+
+.information_content .ant-table{
+    height: 100% !important;
+    font-family: Inter;
+}
+@media (max-width: 576px) {
+    .information_content{
+        padding: 10px;
+        height: calc(100vh - 68px);
+    }
+    .information_content_info {
+        padding: 15px;
+    }
+
+    .information_content_info {
+        height: calc(100vh - 160px);
+    }
+    .admin_table {
+        height: calc(100vh - 190px);
+        overflow-y: auto;
+    }
+
+}

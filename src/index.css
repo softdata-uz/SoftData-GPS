@@ -1,0 +1,215 @@
+@font-face {
+    font-family: Inter;
+    src: url(./fonts/Inter/static/Inter-Medium.ttf);
+}
+
+* {
+    font-family: 'Inter', sans-serif;
+}
+
+/*--forms--*/
+:where(.css-dev-only-do-not-override-djtmh8).ant-input-outlined:focus {
+    border-color: #29b85d;
+    outline: 0;
+    -webkit-box-shadow: 0 0 0 2px rgba(40, 229, 56, 0.2);
+    box-shadow: 0 0 0 2px rgba(46, 229, 40, 0.2);
+}
+
+:where(.css-dev-only-do-not-override-djtmh8).ant-form-item {
+    margin-bottom: 8px !important;
+}
+
+.ant-input:hover {
+    border-color: #29b85d;
+}
+
+.ant-select:hover {
+    border-color: #29b85d;
+}
+
+a {
+    text-decoration: none !important;
+}
+
+.ant-select-selector:hover, .ant-select-selector:focus-within {
+    border: 1px solid #29b85d !important;
+}
+
+:where(.css-dev-only-do-not-override-djtmh8).ant-form-vertical .ant-form-item-label {
+    padding: 0 !important;
+}
+
+:where(.css-dev-only-do-not-override-1qfezbu).ant-pagination .ant-pagination-item-active a {
+    color: #29b85d !important;
+}
+
+:where(.css-dev-only-do-not-override-1qfezbu).ant-pagination .ant-pagination-item-active {
+    border-color: #29b85d !important;
+}
+:where(.css-dev-only-do-not-override-1qfezbu).ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+    border: 1px solid #29b85d !important;
+}
+
+:where(.css-dev-only-do-not-override-19lec04).ant-pagination .ant-pagination-item-active a {
+    color: #29b85d!important;
+}
+:where(.css-dev-only-do-not-override-19lec04).ant-pagination .ant-pagination-item-active {
+    border-color: #29b85d!important;
+}
+
+label {
+    font-family: Inter;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 700;
+    /*line-height: 24px;*/
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.ant-picker:hover{
+    border: 1px solid #29b85d !important;
+}
+.ant-picker-focused{
+    border: 1px solid #29b85d !important;
+}
+
+:where(.css-dev-only-do-not-override-djtmh8).ant-btn-primary{
+    background: #26BF56!important;
+}
+:where(.css-dev-only-do-not-override-djtmh8).ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-selected:not(.ant-picker-cell-disabled) .ant-picker-cell-inner{
+    background: #26BF56!important;
+}
+:where(.css-dev-only-do-not-override-djtmh8) a{
+    color: #26BF56!important;
+}
+
+:where(.css-dev-only-do-not-override-djtmh8).ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before{
+    border: 1px solid #26BF56!important;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
+
+/*----table-----*/
+.ant-table-tbody > tr > td {
+    padding: 8px 8px !important;
+}
+
+.ant-table-thead tr > th {
+    padding: 12px 12px !important;
+}
+
+
+/*-----scrol----*/
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+/*::webkit-sc*/
+
+::-webkit-scrollbar-thumb {
+    background-color: #29b85d;
+    border-radius: 30px;
+}
+
+/*----pagination----*/
+
+.ant-pagination-item:hover {
+    border-color: #29b85d;
+}
+
+.ant-pagination-next:hover .ant-pagination-item-link {
+    color: #29b85d;
+    border-color: #29b85d;
+}
+
+.ant-pagination-prev:hover .ant-pagination-item-link {
+    color: #29b85d;
+    border-color: #29b85d;
+}
+
+.ant-pagination-item-active {
+    border-color: #29b85d;
+}
+
+.ant-pagination-item:hover {
+    border-color: #29b85d;
+}
+
+.ant-pagination-next:hover .ant-pagination-item-link {
+    color: #29b85d;
+    border-color: #29b85d;
+}
+
+.ant-pagination-prev:hover .ant-pagination-item-link {
+    color: #29b85d;
+    border-color: #29b85d;
+}
+
+:where(.css-dev-only-do-not-override-djtmh8).ant-pagination .ant-pagination-item-active {
+    border-color: #29b85d!important;
+}
+:where(.css-dev-only-do-not-override-djtmh8).ant-pagination .ant-pagination-item-active a {
+    color: #29b85d!important;
+}
+
+/*---checkbox---*/
+:where(.css-dev-only-do-not-override-djtmh8).ant-checkbox-checked .ant-checkbox-inner {
+    background-color: #29b85d!important;
+    border-color: #29b85d!important;
+}
+.ant-checkbox:hover{
+    border-color: #26BF56;
+}
+/*.apexcharts-legend-marker {*/
+/*    border-radius: 50% !important; !* 🔥 Markerlarni to‘liq yumaloq qilish *!*/
+/*    width: 12px !important;*/
+/*    height: 12px !important;*/
+/*}*/
+
+
+/* modal  */
+
+.mymodal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /*border: 1px solid #ccc;*/
+    background: #fff;
+    overflow: auto;
+    border-radius: 12px;
+    outline: none;
+}
+
+
+
+.myoverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 10;
+}
+
+.ReactModal__Overlay {
+    opacity: 0;
+    transition: opacity 300ms ease-in-out;
+}
+
+.ReactModal__Overlay--after-open {
+    opacity: 1;
+}
+
+.ReactModal__Overlay--before-close {
+    opacity: 0;
+}

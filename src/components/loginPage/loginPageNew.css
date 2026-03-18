@@ -1,0 +1,129 @@
+.login_page_new {
+    display: grid;
+    grid-template-rows: 1.3fr 2fr;
+    height: 100vh;
+}
+
+.login_page_new_top {
+    background: #1C232C;
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+
+.login_page_new_bottom {
+    background: #FFF;
+}
+
+.login_page_new_login {
+    position: absolute;
+    top: 50%;
+    width: 350px;
+    display: inline-flex;
+    padding: 30px 20px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    border-radius: 10px;
+    border: 1px solid #F7F7F8;
+    background: #FFF;
+    box-shadow: 0px 40px 100px 0px rgba(0, 0, 0, 0.06);
+}
+
+.login_page_new_login_body {
+    width: 100%;
+}
+
+.login_page_new_login_body_inner {
+    text-align: center;
+}
+
+.login_page_new_login_body_inner h2 {
+    color: #1C232C;
+    text-align: center;
+    font-family: Inter;
+    font-size: 24px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: normal;
+}
+
+.login_page_new_login_body_inner p {
+    color: #636C79;
+    text-align: center;
+    font-family: Inter;
+    font-size: 16px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: normal;
+}
+
+.login_page_new_login_body_inner_form {
+
+}
+
+.login_page_new_login_body_inner_form {
+    margin-top: 25px;
+}
+.ant-select-selection-item {
+    font-family: Inter!important;
+    font-style: normal!important;
+    font-weight: 600!important;
+    font-size: 14px!important;
+    line-height: 20px!important;
+}
+.ant-select-item-option-content{
+    font-family: Inter!important;
+    font-style: normal!important;
+    font-weight: 600!important;
+    font-size: 14px!important;
+    line-height: 20px!important;
+}
+.login_page_new_login_body_inner_form .ant-input {
+    height: 30px !important;
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.login_page_new_login_body_inner_form .ant-input-affix-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    border-radius: 5px !important;
+    height: 40px !important;
+    /*margin-top: 10px;*/
+}
+
+.login_page_new_login_body_inner_form button {
+    font-family: Inter;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 20px;
+    color: #FFFFFF;
+    background: #17B26A;
+    border-radius: 5px;
+    width: 100%;
+    height: 40px;
+}
+
+.ant-input input {
+    background: transparent !important;
+}
+
+.ant-input-prefix .anticon {
+    /*color: green!important;*/
+}
+
+.login_select {
+    margin-top: 20px;
+}
+
+
+.checkbox_row :where(.css-dev-only-do-not-override-19lec04).ant-form-item {
+    margin-bottom: 4px !important;
+}
