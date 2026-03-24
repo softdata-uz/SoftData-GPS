@@ -228,18 +228,18 @@ const DeviseModal = (props) => {
                                     <Select.Option disabled value="">
                                         <span style={{color: "#bfbfbf"}}>{t("Tanlang")}</span>
                                     </Select.Option>
-                                    <Select.Option value="train">
-                                        {t("Teplavoz")}
+                                    {/*<Select.Option value="train">*/}
+                                    {/*    {t("Teplavoz")}*/}
+                                    {/*</Select.Option>*/}
+                                    <Select.Option value="bus">
+                                        {t("bus")}
                                     </Select.Option>
-                                    {/*<Select.Option value="bus">*/}
-                                    {/*    {t("bus")}*/}
-                                    {/*</Select.Option>*/}
-                                    {/*<Select.Option value="car">*/}
-                                    {/*    {t("car")}*/}
-                                    {/*</Select.Option>*/}
-                                    {/*<Select.Option value="truck">*/}
-                                    {/*    {t("truck")}*/}
-                                    {/*</Select.Option>*/}
+                                    <Select.Option value="car">
+                                        {t("car")}
+                                    </Select.Option>
+                                    <Select.Option value="truck">
+                                        {t("truck")}
+                                    </Select.Option>
                                     {/*<Select.Option value="ibp">*/}
                                     {/*    {t("ibp")}*/}
                                     {/*</Select.Option>*/}

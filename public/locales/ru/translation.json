@@ -188,7 +188,12 @@
   "Vaqt": "Время",
   "Dvigatel holati": "Состояние двигателя",
   "yoniq": "включен",
-  "o'chiq": "выключен"
+  "o'chiq": "выключен",
+  "Transportlar": "Транспорты",
+  "Faol dvigatellar": "Активные двигатели",
+  "Nofaol dvigatellar": "Неактивные двигатели",
+  "Faol": "Активный",
+  "Nofaol": "Неактивный"
 
 
 

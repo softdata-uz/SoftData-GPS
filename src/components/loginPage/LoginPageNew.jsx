@@ -16,12 +16,10 @@ const LoginPageNew = () => {
     const {t} = useTranslation();
 
     const [loading, setLoading] = useState(false);
-    const [useDomain, setUseDomain] = useState(false);
 
     const [form] = Form.useForm();
 
     const initialValues = {
-        domain: null,
         login: '',
         password: ''
     };
@@ -32,7 +30,6 @@ const LoginPageNew = () => {
         const payload = {
             login: values.login,
             password: values.password,
-            ...(useDomain && { domain: values.domain })
         };
 
         axios.post(`${ip}/api/sign-in`, payload)
@@ -76,50 +73,6 @@ const LoginPageNew = () => {
                                     onFinishFailed={onFinishFailed}
                                     autoComplete="off"
                                 >
-
-                                    <div className="checkbox_row">
-                                        <Form.Item>
-                                            <Checkbox
-                                                checked={useDomain}
-                                                onChange={(e) => {
-                                                    setUseDomain(e.target.checked);
-                                                    if (!e.target.checked) {
-                                                        form.setFieldsValue({ domain: null });
-                                                    }
-                                                }}
-                                            >
-                                                Domain tanlash
-                                            </Checkbox>
-                                        </Form.Item>
-                                    </div>
-
-
-                                    <Form.Item
-                                        name="domain"
-                                        rules={[
-                                            {
-                                                required: useDomain,
-                                                message: t("Tanlash majburiy"),
-                                            },
-                                        ]}
-                                    >
-                                        <Select
-                                            size="large"
-                                            disabled={!useDomain}
-                                            placeholder={t("Tanlang")}
-                                        >
-                                            <Select.Option value="uzairports">
-                                                uzairports
-                                            </Select.Option>
-                                            <Select.Option value="uah">
-                                                uah
-                                            </Select.Option>
-                                            <Select.Option value="cargouz">
-                                                cargouz
-                                            </Select.Option>
-                                        </Select>
-                                    </Form.Item>
-
 
                                     <Form.Item
                                         name="login"

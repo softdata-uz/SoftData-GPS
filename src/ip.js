@@ -1,9 +1,13 @@
-let local= "192.168.10.136:37771";
-export const ENDPOINT = "http://192.168.10.136:37773";
+// let local= "192.168.10.136:37771";
+// export const ENDPOINT = "http://192.168.10.136:37773";
 
 
 // export const ENDPOINT = "http://192.168.10.136:37773";
 // let local= "192.168.10.136:37773";
+
+
+export const ENDPOINT = "http://192.168.10.136:37701";
+let local= "192.168.10.136:37773";
 
 
 

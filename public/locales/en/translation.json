@@ -189,7 +189,12 @@
   "Vaqt": "Time",
   "Dvigatel holati": "Engine status",
   "yoniq": "on",
-  "o'chiq": "off"
+  "o'chiq": "off",
+  "Transportlar": "Transports",
+  "Faol dvigatellar": "Active engines",
+  "Nofaol dvigatellar": "Inactive engines",
+  "Faol": "Active",
+  "Nofaol": "Inactive"
 
 
 

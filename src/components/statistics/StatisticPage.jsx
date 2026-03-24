@@ -52,8 +52,8 @@ const StatisticPage = () => {
                         </div>
 
                         <div className="legend">
-                            <span><span className="legend-color active"></span> Faol</span>
-                            <span><span className="legend-color inactive"></span> Nofaol</span>
+                            <span><span className="legend-color active"></span>{t("Faol")}</span>
+                            <span><span className="legend-color inactive"></span>{t("Nofaol")}</span>
                         </div>
                     </div>
 

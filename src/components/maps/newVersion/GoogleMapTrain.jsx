@@ -394,7 +394,7 @@ const GoogleMapTrain = (props) => {
                     <div className="transprt_info_inner">
                         <div className="transprt_info_item">{t("Bosib o'tgan masofasi")}</div>
                         <div className="transprt_info_item2">
-                            {clickedMarker?.distance ? `${clickedMarker.distance} ${t("km")}` : ''}
+                            {`${clickedMarker.distance} ${t("km")}`}
                         </div>
                     </div>
 
@@ -430,7 +430,7 @@ const GoogleMapTrain = (props) => {
                 </>
             ),
         }
-    ], [clickedMarker , i18n.language]); // <-- clickedMarker o'zgarganda qayta yaratiladi
+    ], [clickedMarker, i18n.language]); // <-- clickedMarker o'zgarganda qayta yaratiladi
 
 
 // new code
@@ -481,7 +481,7 @@ const GoogleMapTrain = (props) => {
                 {/*</div>*/}
 
 
-                <h2 style={{marginLeft : "16px"}}>Transportlar</h2>
+                <h2 style={{marginLeft: "16px"}}>{t("Transportlar")}</h2>
 
             </div>
             <div className="transprts_map">
@@ -637,7 +637,18 @@ const GoogleMapTrain = (props) => {
                                             </div>
                                             <div className="transprt_info_item2">
                                                 {
-                                                    clickedMarker?.type == 'train' ? t("Teplavoz") : ''
+                                                    clickedMarker?.type == 'train' ? t("Teplavoz") :
+                                                        clickedMarker?.type == 'truck' ? t("Og'ir avtomobil") :
+                                                            clickedMarker?.type == 'bus' ? t("Avtobus") :
+                                                                clickedMarker?.type == 'car' ? t("Yengil avtomobil") :
+                                                                    clickedMarker?.type == 'ladder' ? t("Trap") :
+                                                                        clickedMarker?.type == 'tractor' ? t("Tractor") :
+                                                                            clickedMarker?.type == 'reloaded' ? t("Autolift") :
+                                                                                clickedMarker?.type == 'tz' ? t("tz") :
+                                                                                    clickedMarker?.type == 'firetruck' ? t("firetruck") :
+                                                                                        clickedMarker?.type == 'specialcar' ? t("specialcar") :
+                                                                                            clickedMarker?.type == 'lenta' ? t("lenta") :
+                                                                                                clickedMarker?.type == 'ibp' ? t("IBP") : ''
                                                 }
                                             </div>
                                         </div>
@@ -847,7 +858,7 @@ const GoogleMapTrain = (props) => {
                                 <div className="transprts_title_search">
                                     <div className="transprts_title">
                                         <div className="transprts_title_line"></div>
-                                        {t("Teplavoz")}
+                                        {t("Transportlar")}
                                     </div>
                                 </div>
                                 {/*<hr/>*/}
@@ -991,7 +1002,18 @@ const GoogleMapTrain = (props) => {
                                             </div>
                                             <div className="transprt_info_item2">
                                                 {
-                                                    clickedMarker?.type == 'train' ? t("Teplavoz") : ''
+                                                    clickedMarker?.type == 'train' ? t("Teplavoz") :
+                                                        clickedMarker?.type == 'truck' ? t("Og'ir avtomobil") :
+                                                            clickedMarker?.type == 'bus' ? t("Avtobus") :
+                                                                clickedMarker?.type == 'car' ? t("Yengil avtomobil") :
+                                                                    clickedMarker?.type == 'ladder' ? t("Trap") :
+                                                                        clickedMarker?.type == 'tractor' ? t("Tractor") :
+                                                                            clickedMarker?.type == 'reloaded' ? t("Autolift") :
+                                                                                clickedMarker?.type == 'tz' ? t("tz") :
+                                                                                    clickedMarker?.type == 'firetruck' ? t("firetruck") :
+                                                                                        clickedMarker?.type == 'specialcar' ? t("specialcar") :
+                                                                                            clickedMarker?.type == 'lenta' ? t("lenta") :
+                                                                                                clickedMarker?.type == 'ibp' ? t("IBP") : ''
                                                 }
                                             </div>
                                         </div>
@@ -1328,7 +1350,7 @@ const GoogleMapTrain = (props) => {
                                 getGPSData={getGPSData}
                                 getSingleData={getSingleData}
                             />
-                            ))}
+                        ))}
 
                     </GoogleMap>
 
