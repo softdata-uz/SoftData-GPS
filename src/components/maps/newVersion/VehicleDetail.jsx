@@ -272,18 +272,14 @@ const VehicleDetail = ({
                                                     <span>{t("Bosib o'tgan masofasi")}</span>
                                                     <b>{isSet(history.distance) ? `${formatNumber(history.distance, 1)} ${t('km')}` : '—'}</b>
                                                 </div>
-                                                <div>
-                                                    <span>{t('Nuqtalar soni')}</span>
-                                                    <b>{formatNumber(history.line.length)}</b>
-                                                </div>
                                             </div>
                                             <div className="vd-tiles">
                                                 <Tile label={t('Oraliq')} wide>
                                                     {`${formatDateTime(history.range?.[0])} — ${formatDateTime(history.range?.[1])}`}
                                                 </Tile>
                                                 <div className="vd-tile vd-legend">
-                                                    <span><i className="vd-legend__pin is-start">A</i>{t('Boshlanish')}</span>
-                                                    <span><i className="vd-legend__pin is-end">B</i>{t('Tugash')}</span>
+                                                    <span><i className="vd-legend__pin is-start"><b>A</b></i>{t('Boshlanish')}</span>
+                                                    <span><i className="vd-legend__pin is-end"><b>B</b></i>{t('Tugash')}</span>
                                                 </div>
                                             </div>
                                         </>

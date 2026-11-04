@@ -70,16 +70,33 @@ const clusterIcon = (cluster) => {
     });
 };
 
-const pinIcon = (label, kind) => L.divIcon({
+const pinIcon = (label, kind, anchor = [11, 11]) => L.divIcon({
     className: 'gps-pin-wrap',
     html: `<span class="mp-pin ${escapeHtml(kind)}">${escapeHtml(label)}</span>`,
     iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    iconAnchor: anchor,
 });
 
 const STOP_ICONS = {short: pinIcon('S', 'is-short'), long: pinIcon('P', 'is-long')};
-const START_ICON = pinIcon('A', 'is-start');
-const END_ICON = pinIcon('B', 'is-end');
+/* Boshlanish / tugash — to'xtash belgilaridan (S/P kvadratchalar) ajralib turadigan
+   tomchi shaklidagi pin: kattaroq, uchi aynan nuqtani ko'rsatadi. */
+const ENDPOINT_W = 28;
+const ENDPOINT_H = 36;
+const endpointIcon = (label, kind, tipX = ENDPOINT_W / 2) => L.divIcon({
+    className: 'gps-pin-wrap',
+    html: `<span class="mp-flag ${escapeHtml(kind)}"><b>${escapeHtml(label)}</b></span>`,
+    iconSize: [ENDPOINT_W, ENDPOINT_H],
+    iconAnchor: [tipX, ENDPOINT_H - 2],
+});
+const START_ICON = endpointIcon('A', 'is-start');
+const END_ICON = endpointIcon('B', 'is-end');
+/* boshlanish va tugash bir joyda bo'lsa (masalan, depoga qaytgan) — yonma-yon: A chapga, B o'ngga
+   og'adi, o'rtada shu joydagi to'xtash belgisi ham ko'rinib qoladi */
+const START_ICON_SIDE = endpointIcon('A', 'is-start', ENDPOINT_W + 2);
+const END_ICON_SIDE = endpointIcon('B', 'is-end', -2);
+const SAME_PLACE_M = 150;
+/* A/B transport belgisi (tanlangan: +1000) va to'xtash belgilari ustida tursin */
+const ENDPOINT_Z = 3000;
 
 const playheadIcon = L.divIcon({
     className: 'gps-playhead-wrap',
@@ -758,8 +775,19 @@ const GoogleMapTrain = () => {
                                     weight={5}
                                     eventHandlers={lineHandlers}
                                 />
-                                <Marker position={history.line[0]} icon={START_ICON} interactive={false} keyboard={false}/>
-                                <Marker position={history.line[history.line.length - 1]} icon={END_ICON} interactive={false} keyboard={false}/>
+                                {(() => {
+                                    const start = history.line[0];
+                                    const end = history.line[history.line.length - 1];
+                                    const together = distance(start, end) < SAME_PLACE_M;
+                                    return (
+                                        <>
+                                            <Marker position={start} icon={together ? START_ICON_SIDE : START_ICON}
+                                                    zIndexOffset={ENDPOINT_Z} interactive={false} keyboard={false}/>
+                                            <Marker position={end} icon={together ? END_ICON_SIDE : END_ICON}
+                                                    zIndexOffset={ENDPOINT_Z + 1} interactive={false} keyboard={false}/>
+                                        </>
+                                    );
+                                })()}
                                 {history.line[playIndex] && (
                                     <Marker position={history.line[playIndex]} icon={playheadIcon} interactive={false} keyboard={false}/>
                                 )}
