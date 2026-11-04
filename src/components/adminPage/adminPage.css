@@ -1,117 +1,222 @@
-.information_content{
-    padding: 24px;
-    background: #F7F7F8;
-}
+/* ================= Adminlar sahifasi =================
+   Asosiy joylashuv (dv-header, dv-table, dv-action...) Qurilmalar sahifasidan
+   (../deviseContent/devices.css). Bu yerda faqat sahifaga xos qismlar.
+   Barcha qiymatlar tokenlardan — yorug'/qorong'i rejimda avtomatik almashadi. */
 
-.information_content_info {
-    height: calc(100vh - 198px);
-    background: #FFFFFF;
-    border-radius: 10px;
-    padding: 24px;
-}
-.admin_table {
-    height: calc(100vh - 246px);
-    overflow-y: auto;
-}
-
-
-/*AcsessTable*/
-
-.table_user_cell {
+/* --- F.I.SH katagi: avatar + ism + @login --- */
+.ad-user {
     display: flex;
     align-items: center;
-    grid-column-gap: 5px;
-
-}
-.table_user_cell_img{
-    /*width: 40px;*/
-    border-radius: 20px;
-    margin-right: 5px;
-    width: 35px!important;
-    height: 35px!important;
-}
-.table_user_cell .ant-image-mask {
-    border-radius: 90px;
-}
-
-.table_item_image_wrapper {
-    width: 40px;
-    height: 40px;
-    background-color: rgb(255, 255, 255);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    overflow: hidden;
-}
-
-.table_round_img{
+    gap: var(--spacing-lg);
+    min-width: 0;
     max-width: 100%;
-    max-height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    text-align: left;
+    cursor: pointer;
 }
 
+.ad-user__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
 
-.edit_button {
-    width: 45px;
-    height: 35px;
-    color: #29B85D;
+.ad-user__name {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 0;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ad-user:hover .ad-user__name {
+    color: var(--text-brand-secondary);
+}
+
+.ad-user__login {
+    font-size: var(--font-size-text-xs);
+    line-height: var(--line-height-text-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ad-you {
+    flex: none;
+    padding: 0 6px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-full);
+    background: var(--bg-secondary);
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-tertiary);
+}
+
+.ad-avatar {
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 35px;
-    cursor: pointer;
-    /*margin: 0 auto;*/
+    width: 36px;
+    height: 36px;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--utility-brand-50);
+    box-shadow: inset 0 0 0 1px var(--utility-brand-200);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--utility-brand-700);
 }
 
-
-.edit_button:hover {
-    background-color: #29B85D;
-    color: #FFFFFF;
-    opacity: 0.9;
-    cursor: pointer;
+.ad-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-.devise_inner_pagination_left {
+.ad-date {
+    display: inline-flex;
+    gap: var(--spacing-md);
+    font-variant-numeric: tabular-nums;
+}
+
+/* o'z hisobini o'chirib bo'lmaydi */
+.dv-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent;
+    border-color: transparent;
+    color: var(--fg-quaternary);
+}
+
+/* --- rol filtri chiplaridagi rangli nuqta --- */
+.ad-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--utility-gray-500);
+}
+
+.ad-dot--brand { background: var(--utility-brand-500); }
+.ad-dot--blue { background: var(--utility-blue-500); }
+.ad-dot--indigo { background: var(--utility-indigo-500); }
+
+/* --- formadagi fotosurat bloki --- */
+.ad-photo {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-top: 12px;
-    height: 60px;
-    background: #FFFFFF;
-    border-radius: 10px;
-    padding: 0 16px;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-xl);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    background: var(--bg-secondary);
 }
-.pagination_total{
+
+.ad-photo__preview {
+    flex: none;
     display: flex;
-    flex-direction: row;
     align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    overflow: hidden;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    color: var(--fg-quaternary);
 }
 
-.add_admin{
-    display: grid;
-    grid-template-columns: auto auto;
-    gap: 10px;
+.ad-photo__preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-.information_content .ant-table{
-    height: 100% !important;
-    font-family: Inter;
+.ad-photo__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
 }
-@media (max-width: 576px) {
-    .information_content{
-        padding: 10px;
-        height: calc(100vh - 68px);
-    }
-    .information_content_info {
-        padding: 15px;
-    }
 
-    .information_content_info {
-        height: calc(100vh - 160px);
-    }
-    .admin_table {
-        height: calc(100vh - 190px);
-        overflow-y: auto;
-    }
+.ad-photo__text strong {
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
 
+.ad-photo__text > span {
+    font-size: var(--font-size-text-xs);
+    line-height: var(--line-height-text-xs);
+    color: var(--text-tertiary);
+}
+
+.ad-photo__actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.ad-user__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+.ad-user__meta .ui-badge {
+    flex: none;
+}
+
+/* F.I.SH katagi: avatar (kattalashtiriladi) + ism tugmasi (tahrirlash) */
+.ad-user__main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ad-avatar.is-zoomable {
+    padding: 0;
+    border: 0;
+    cursor: zoom-in;
+    transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.ad-avatar.is-zoomable:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--utility-brand-300);
+}
+
+.ad-avatar.is-zoomable:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* katta rasm: kichik manba ham ekranda yetarli kattalikda ko'rinsin */
+.ad-lightbox .ant-image-preview-img {
+    min-height: min(60vh, 420px);
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 16px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
 }

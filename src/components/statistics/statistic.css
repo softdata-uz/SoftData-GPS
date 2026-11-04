@@ -1,105 +1,454 @@
+/* ================= Statistics page =================
+   1:1 with SoftData-AirPort-GPS features/statistics (Tailwind classes → tokens.css).
+   Breakpoints: sm = 640px (width-lg), md = 768px (width-xl), xl = 1280px (width-3xl). */
+
 .statistic_page {
+    height: 100%; /* .content balandligini to'ldiradi */
+    overflow: auto;
+}
+
+/* flex h-full flex-col gap-3xl overflow-auto p-3xl */
+.st {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    padding: 24px;
-    background: #F7F7F8;
-    height: calc(100vh - 78px);
-    overflow: scroll;
-    /*background: red;*/
+    gap: var(--spacing-3xl);
+    padding: var(--spacing-3xl);
+    background: var(--bg-secondary);
+    font-family: var(--font-family-body);
+    color: var(--text-primary);
 }
-.statistic_inner_top {
-   display: grid;
-    grid-template-columns: 1fr 3fr;
-    gap: 24px;
+
+.st *,
+.st *::before,
+.st *::after {
+    box-sizing: border-box;
 }
-.statistic_inner_item{
-    /*height: calc(100vh - 540px);*/
-    background: #FFFFFF;
-    border-radius: 10px;
-    padding: 24px;
-    /*background: red;*/
+
+.st p,
+.st h1,
+.st h3 {
+    margin: 0;
 }
-.statistic_inner_bottom_item{
-    height: calc(100vh - 520px);
-    background: #FFFFFF;
-    border-radius: 10px;
-    padding: 24px;
-}
-.statistic_title{
+
+/* ---------- PageHeader ---------- */
+.st-header {
     display: flex;
-    justify-content: space-between;
-    flex-direction: row;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.st-header__text {
+    min-width: 0;
+}
+
+.st-header__title {
+    font-size: var(--font-size-display-xs);
+    line-height: var(--line-height-display-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.st-header__sub {
+    margin-top: var(--spacing-xs) !important;
+    font-size: var(--font-size-text-md);
+    line-height: var(--line-height-text-md);
+    color: var(--text-tertiary);
+}
+
+.st-header__actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-}
-/*.vertcal_line{*/
-/*    width: 1px;*/
-/*    height: 20px;*/
-/*    background: #079455;*/
-/*}*/
-.statistic_title_inner{
-    color:  #000;
-    font-size: 16px;
-    font-family: Inter;
-    font-style: normal;
-    font-weight: 600;
-    line-height: 24px;
-    padding-left: 8px;
-    border-left: 2px solid #17B26A;
+    gap: var(--spacing-lg);
 }
 
-
-.apexcharts-legend.apx-legend-position-top.apexcharts-align-center {
-    justify-content: flex-start!important;
-    align-items: flex-start!important;
+@media (min-width: 768px) {
+    .st-header {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
 }
 
+/* ---------- Card ---------- */
+.st-card {
+    min-width: 0;
+    padding: var(--spacing-3xl);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-xs);
+}
 
-@media only screen and (max-width: 1566px) {
-    .statistic_page {
-        display: flex;
+.st-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-xl);
+}
+
+.st-card__title {
+    min-width: 0;
+    font-size: var(--font-size-text-lg);
+    line-height: var(--line-height-text-lg);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.st-card__actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.st-card__body {
+    margin-top: var(--spacing-xl);
+}
+
+.st-card__body--loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+/* ---------- KPI ---------- */
+.st-kpis {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--spacing-xl);
+}
+
+@media (min-width: 640px) {
+    .st-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1280px) {
+    .st-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.st-kpi {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-xl);
+}
+
+/* FeaturedIcon size="lg" */
+.st-featured {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-7xl);
+    height: var(--spacing-7xl);
+    border-radius: var(--radius-xl);
+}
+
+.st-featured.is-brand { background: var(--utility-brand-50); color: var(--featured-icon-light-fg-brand); }
+.st-featured.is-success { background: var(--bg-success-primary); color: var(--featured-icon-light-fg-success); }
+.st-featured.is-gray { background: var(--bg-secondary); color: var(--featured-icon-light-fg-gray); }
+.st-featured.is-warning { background: var(--bg-warning-primary); color: var(--featured-icon-light-fg-warning); }
+
+.st-kpi__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.st-kpi__label {
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.st-kpi__value {
+    font-size: var(--font-size-display-sm);
+    line-height: var(--line-height-display-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.st-kpi__share {
+    margin-top: var(--spacing-xxs) !important;
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    color: var(--text-tertiary);
+}
+
+/* ---------- row: donut + fleet ---------- */
+.st-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--spacing-xl);
+}
+
+@media (min-width: 1280px) {
+    .st-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .st-card--wide { grid-column: span 2 / span 2; }
+}
+
+/* ---------- StatusSplit ---------- */
+.st-split {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-xl);
+    border-top: 1px solid var(--border-secondary);
+}
+
+.st-split__row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.st-split__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+}
+
+.st-split__label {
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.st-split__value {
+    flex-shrink: 0;
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.st-split__value span {
+    margin-left: var(--spacing-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-tertiary);
+}
+
+.st-split__track {
+    display: block;
+    height: var(--spacing-md);
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--bg-secondary);
+}
+
+.st-split__track span {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 150ms;
+}
+
+.st-split__track .is-success { background: var(--bg-success-solid); }
+.st-split__track .is-gray { background: var(--bg-quaternary); }
+.st-split__track .is-brand { background: var(--bg-brand-solid); }
+.st-split__track .is-warning { background: var(--bg-warning-solid); }
+
+/* ---------- FleetBars ---------- */
+.st-fleet {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.st-fleet__row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl);
+}
+
+/* Transport tasviri — keng katak: 3D rasm yetarli kattalikda ko'rinadi.
+   Faol turda yumshoq yashil fon, faol qurilma yo'q bo'lsa rasm oqarib turadi. */
+.st-fleet__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 48px;
+    overflow: hidden;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    background: radial-gradient(120% 110% at 50% 0%, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    box-shadow: var(--shadow-xs);
+    transition: border-color 150ms, box-shadow 150ms;
+}
+
+/* rasm katak ichida chetlardan bo'sh joy bilan turadi — hover'da kattalashganda ham qirqilmaydi */
+.st-fleet__icon svg {
+    width: 58px;
+    height: 38px;
+    filter: drop-shadow(0 3px 3px rgba(10, 13, 18, 0.22));
+    transition: transform 200ms ease;
+}
+
+.st-fleet__icon.is-active {
+    border-color: var(--utility-success-200);
+    background: radial-gradient(120% 110% at 50% 0%, var(--bg-primary) 0%, var(--utility-success-50) 100%);
+}
+
+.st-fleet__icon.is-off svg {
+    filter: grayscale(1) opacity(0.65) drop-shadow(0 3px 3px rgba(10, 13, 18, 0.18));
+}
+
+.st-fleet__row:hover .st-fleet__icon {
+    box-shadow: var(--shadow-sm);
+}
+
+.st-fleet__row:hover .st-fleet__icon svg {
+    transform: scale(1.06);
+}
+
+.st-fleet__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.st-fleet__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+}
+
+.st-fleet__name {
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.st-fleet__nums {
+    flex-shrink: 0;
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    color: var(--text-tertiary);
+}
+
+.st-fleet__nums b {
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.st-fleet__track {
+    width: 100%;
+    height: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    background: var(--bg-quaternary);
+}
+
+.st-fleet__track div {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: var(--bg-success-solid);
+    transition: width 300ms;
+}
+
+/* ---------- Skeleton (animate-pulse bg-secondary rounded-md) ---------- */
+.st-skeleton {
+    display: block;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    animation: st-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.st-skeleton--value {
+    width: var(--spacing-8xl);
+    height: var(--spacing-6xl);
+    margin-top: var(--spacing-md);
+}
+
+.st-skeleton--chart {
+    width: 100%;
+    height: var(--spacing-11xl);
+    margin-top: var(--spacing-xl);
+}
+
+.st-skeleton--row {
+    width: 100%;
+    height: var(--spacing-5xl);
+}
+
+.st-card__body .st-skeleton--chart {
+    margin-top: 0;
+}
+
+@keyframes st-pulse {
+    50% { opacity: 0.5; }
+}
+
+/* ---------- Telefon ---------- */
+@media (max-width: 640px) {
+    .st {
+        gap: var(--spacing-xl);
+        padding: var(--spacing-xl);
+    }
+
+    .st-header__title {
+        font-size: var(--font-size-text-xl);
+        line-height: var(--line-height-text-xl);
+    }
+
+    .st-header__sub {
+        font-size: var(--font-size-text-sm);
+        line-height: var(--line-height-text-sm);
+    }
+
+    /* KPI — ikki ustun, ikonka tepada */
+    .st-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--spacing-md);
+    }
+
+    .st-kpi {
         flex-direction: column;
-        gap: 12px;
-        padding: 12px;
-        overflow: scroll;
-        height: calc(100vh - 78px);
+        gap: var(--spacing-md);
+        padding: var(--spacing-lg);
     }
-    .statistic_inner_top {
-        display: grid;
-        grid-template-columns: 1fr 3fr;
-        gap: 12px;
+
+    .st-featured {
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-lg);
     }
-    .statistic_inner_item{
-        height: calc(100vh - 400px);
-        background: #FFFFFF;
-        border-radius: 10px;
-        padding: 12px;
+
+    .st-kpi__value {
+        font-size: var(--font-size-display-xs);
+        line-height: var(--line-height-display-xs);
     }
-    .statistic_inner_bottom_item{
-        height: calc(100vh - 360px);
-        background: #FFFFFF;
-        border-radius: 10px;
-        padding: 12px;
+
+    .st-card {
+        padding: var(--spacing-lg);
+    }
+
+    /* sarlavha qirqilmasin; amallar (sana, belgilar) keyingi qatorga o'tadi */
+    .st-card__head {
+        flex-wrap: wrap;
+    }
+
+    .st-card__title {
+        white-space: normal;
     }
 }
-
-@media (max-width: 576px) {
-    .statistic_inner_top {
-        display: block;
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-

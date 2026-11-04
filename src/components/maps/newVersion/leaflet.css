@@ -1,0 +1,290 @@
+/* ============================================================================
+   Leaflet'ning o'z DOM'i React'dan tashqarida chiziladi, shuning uchun uni
+   Tailwind sinflari bilan bezab bo'lmaydi — bu yerda tokenlarning CSS
+   o'zgaruvchilari ishlatiladi (src/styles/tokens.css).
+   ========================================================================== */
+
+.leaflet-container {
+    width: 100%;
+    height: 100%;
+    background: var(--bg-secondary);
+    font-family: var(--font-family-body);
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    outline: none;
+}
+
+/* --------------------------------------------------------- atribusiya qatori */
+/* Litsenziya talab qiladigan matn — qoladi, lekin ko'zga tashlanmaydi.
+   "Leaflet" prefiksi va uning bayrog'i JSX'da prefix={false} bilan o'chirilgan. */
+/* Atribusiya litsenziya talabi (OSM ODbL, MapTiler) — olib tashlab bo'lmaydi,
+   ammo yig'ilgan holatda ko'rsatishga ruxsat beriladi. Odatda burchakda faqat
+   kichik "i" belgisi turadi, sichqoncha tekkanda to'liq matn ochiladi. */
+.leaflet-container .leaflet-control-attribution {
+    display: flex;
+    align-items: center;
+    max-width: var(--spacing-2xl);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border-radius: var(--radius-xs) 0 0 0;
+    background: var(--bg-primary);
+    color: var(--text-quaternary);
+    font-size: var(--font-size-text-xs);
+    line-height: var(--line-height-text-xs);
+    white-space: nowrap;
+    opacity: 0.4;
+    transition: max-width 200ms ease, opacity 150ms ease;
+}
+
+/* Yig'ilgan holatdagi belgi */
+.leaflet-container .leaflet-control-attribution::before {
+    content: 'ⓘ';
+    flex: none;
+    width: var(--spacing-2xl);
+    text-align: center;
+}
+
+.leaflet-container .leaflet-control-attribution:hover,
+.leaflet-container .leaflet-control-attribution:focus-within {
+    max-width: var(--paragraph-max-width);
+    padding-right: var(--spacing-xs);
+    opacity: 1;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+    color: var(--text-tertiary);
+    text-decoration: none;
+}
+
+/* ------------------------------------------------------------ transport belgi */
+/* divIcon standart oq fon va chegara bilan keladi — tozalanadi. */
+.leaflet-container .vehicle-marker {
+    background: none;
+    border: none;
+}
+
+.vehicle-marker__body {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform-origin: center;
+    cursor: pointer;
+    transition: transform 150ms ease;
+}
+
+/* faqat rasm — atrofida halqa, nur yoki strelka yo'q */
+.vehicle-marker__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* soya SVG ichida (vehicleMarkerIcon) — CSS filter mobil qurilmada rasmni xiralashtiradi */
+    user-select: none;
+}
+
+/* Davlat raqami — faqat yaqin masshtabda */
+.vehicle-marker__plate {
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1px 8px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 16px;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------- aeroport sxemasi yorliqlari */
+.leaflet-container .airport-label {
+    width: auto !important;
+    margin: 0 !important;
+    background: none;
+    border: none;
+    white-space: nowrap;
+}
+
+.airport-label__text {
+    display: inline-block;
+    transform: translate(-50%, -50%);
+    color: var(--text-quaternary);
+    font-size: var(--font-size-text-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-shadow:
+        0 0 3px var(--bg-primary),
+        0 0 3px var(--bg-primary),
+        0 0 6px var(--bg-primary);
+}
+
+.airport-label__text--runway {
+    color: var(--text-secondary);
+    font-size: var(--font-size-text-sm);
+}
+
+.airport-label__text--terminal {
+    color: var(--text-tertiary);
+    text-transform: none;
+}
+
+/* ------------------------------------------------------- Navigator (3D) nishoni */
+.navigator-marker {
+    display: block;
+    filter: drop-shadow(0 var(--spacing-xs) var(--spacing-md) var(--shadow-md_01));
+    will-change: transform;
+}
+
+/* --------------------------------------------------------- klaster (guruhlash) */
+.leaflet-container .gps-cluster-wrap {
+    background: none;
+    border: none;
+}
+
+.gps-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border: 2px solid var(--bg-primary);
+    border-radius: var(--radius-full);
+    background: var(--bg-brand-solid);
+    color: var(--text-primary_on-brand);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: var(--shadow-md);
+}
+
+.gps-cluster--sm {
+    font-size: var(--font-size-text-xs);
+}
+
+.gps-cluster--md {
+    font-size: var(--font-size-text-sm);
+}
+
+.gps-cluster--lg {
+    font-size: var(--font-size-text-md);
+}
+
+/* ------------------------------------------------- yo'nalish chizig'i va strelka */
+/* Kontur chizig'i va strelka rangi JS'da beriladi (mapStyles → casingColor):
+   Leaflet `setStyle` orqali sinf nomini qo'llamaydi, faqat rang qiymatini. */
+.leaflet-container .route-arrow {
+    background: none;
+    border: none;
+}
+
+.route-arrow__glyph {
+    display: block;
+    opacity: 0.8;
+}
+
+/* ------------------------------------------------------- masshtab va koordinata */
+.leaflet-container .leaflet-control-scale-line {
+    padding: 0 var(--spacing-xs);
+    border: 1px solid var(--border-secondary);
+    border-top: none;
+    border-radius: 0 0 var(--radius-xs) var(--radius-xs);
+    background: var(--bg-primary);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-text-xs);
+    line-height: var(--line-height-text-xs);
+    opacity: 0.85;
+}
+
+/* ------------------------------------------------------- tarixdagi joriy nuqta */
+.leaflet-container .gps-playhead-wrap {
+    background: none;
+    border: none;
+}
+
+.gps-playhead {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 3px solid var(--bg-primary);
+    border-radius: var(--radius-full);
+    background: var(--bg-error-solid);
+    box-shadow: var(--shadow-md);
+}
+
+/* ------------------------------------------------------- tarix vaqt chizig'i */
+.gps-scrubber {
+    --p: 0%;
+    width: 240px;
+    height: 6px;
+    appearance: none;
+    border-radius: var(--radius-full);
+    /* o'ynatilgan qismi — yashil */
+    background: linear-gradient(to right, var(--bg-brand-solid) var(--p), var(--bg-tertiary) var(--p));
+    cursor: pointer;
+}
+
+.gps-scrubber::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 3px solid var(--bg-brand-solid);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform 120ms;
+}
+
+.gps-scrubber:hover::-webkit-slider-thumb {
+    transform: scale(1.15);
+}
+
+.gps-scrubber::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 3px solid var(--bg-brand-solid);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    cursor: pointer;
+}
+
+/* --------------------------------------------------------------- tooltip/popup */
+.leaflet-container .leaflet-tooltip.gps-tooltip {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: var(--font-size-text-sm);
+    font-weight: var(--font-weight-semibold);
+    box-shadow: var(--shadow-md);
+}
+
+.leaflet-tooltip.gps-tooltip::before {
+    display: none;
+}
+
+.gps-tooltip__row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.gps-tooltip__dot {
+    width: var(--spacing-md);
+    height: var(--spacing-md);
+    flex: none;
+    border-radius: var(--radius-full);
+    background: var(--fg-quaternary);
+}
+
+.gps-tooltip__dot.is-active {
+    background: var(--bg-success-solid);
+}
+

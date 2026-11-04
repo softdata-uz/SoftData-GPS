@@ -1,186 +1,182 @@
-import React, {memo, useEffect, useRef, useState} from "react";
-import {OverlayView, InfoWindow} from "@react-google-maps/api";
+import React, {memo, useEffect, useMemo, useRef, useState} from 'react';
+import {Marker, Tooltip} from 'react-leaflet';
+import L from 'leaflet';
 
-import teplavoz from '../../../icons/iconsNews/Train.png';
-import teplavozRed from '../../../icons/iconsNews/Train (1).png';
+import {vehicleMarkerIcon} from './vehicleMeta';
+import {HEADING_MIN_M, JITTER_M, TELEPORT_M, bearing, distance, isValidPoint} from './geo';
+import {escapeHtml} from './html';
 
-// Iconlar
+const SIZE = 46;
+const lerp = (a, b, t) => a + (b - a) * t;
 
-import car from '../../../icons/iconsNews/Car (3).png';
-import carRed from '../../../icons/iconsNews/Car (4).png';
-import truck from '../../../icons/iconsNews/Truck (2).png';
-import truckRed from '../../../icons/iconsNews/Truck (3).png';
-import bus from '../../../icons/iconsNews/Bus (2).png';
-import busRed from '../../../icons/iconsNews/Bus (3).png';
-import trap from '../../../icons/iconsNews/Trap (3).png';
-import trapRed from '../../../icons/iconsNews/Trap (4).png';
-import tractor from '../../../icons/iconsNews/Reloader.png';
-import tractorRed from '../../../icons/iconsNews/Reloader (1).png';
-import autolift from '../../../icons/iconsNews/Lift.png';
-import autoliftRed from '../../../icons/iconsNews/Lift (1).png';
-import ibp from '../../../icons/iconsNews/IBP (3).png';
-import ibpRed from '../../../icons/iconsNews/IBP (4).png';
-import lenta from '../../../icons/iconsNews/Lenta (3).png';
-import lentaRed from '../../../icons/iconsNews/Lenta (1).png';
-import tz from '../../../icons/iconsNews/TZ (1).png';
-import tzRed from '../../../icons/iconsNews/TZ (2).png';
-import fireCar from '../../../icons/iconsNews/Firetruck.png';
-import fireCarRed from '../../../icons/iconsNews/Firetruck (1).png';
-import specialcar from '../../../icons/iconsNews/05.png';
-import specialcarRed from '../../../icons/iconsNews/05 (1).png';
+/** Eng qisqa burilish: 350° → 10° bo'lsa -340° emas, +20°. */
+const shortestTurn = (from, to) => ((to - from + 540) % 360) - 180;
 
-// Iconlar obyekt sifatida
-const vehicleIcons = {
-    train: {active: teplavoz, inactive: teplavozRed},
-    car: {active: car, inactive: carRed},
-    bus: {active: bus, inactive: busRed},
-    truck: {active: truck, inactive: truckRed},
-    ibp: {active: ibp, inactive: ibpRed},
-    ladder: {active: trap, inactive: trapRed},
-    tractor: {active: tractor, inactive: tractorRed},
-    reloaded: {active: autolift, inactive: autoliftRed},
-    lenta: {active: lenta, inactive: lentaRed},
-    tz: {active: tz, inactive: tzRed},
-    firetruck: {active: fireCar, inactive: fireCarRed},
-    specialcar: {active: specialcar, inactive: specialcarRed},
-};
+/**
+ * Xaritadagi bitta transport (SoftData-AirPort-GPS `VehicleMarker` asosida).
+ *
+ * Backend har so'rovda bitta nuqta beradi, oradagi yo'l interpolyatsiya qilinadi:
+ *   • ~2.5 m dan kichik siljish — GPS titrashi, e'tiborsiz qoldiriladi;
+ *   • yo'nalish haqiqiy siljishdan hisoblanadi — burilishlar yo'lga mos tushadi;
+ *   • 400 m dan katta sakrash (aloqa uzilishi) animatsiyasiz ko'chiriladi.
+ *
+ * Burilish har kadrda to'g'ridan-to'g'ri DOM'ga yoziladi: divIcon'ni qayta
+ * yaratish qimmat, `transform` esa arzon.
+ */
+const TrainMarker = ({car, selected, onSelect, onMove, pollInterval = 3000, showPlate = false}) => {
+    const {
+        angle = 0,
+        coordinate = [0, 0],
+        active = false,
+        display_name,
+        description,
+        type,
+        device_id,
+        date_time,
+    } = car || {};
 
-const TrainMarker = ({
-                         car,
-                         setHistoryParams,
-                         historyParams,
-                         onTransportInfoChange,
-                         setMapCenter,
-                         setMapZoom,
-                         selectedCar,
-                         setSelectedCar,
-                         getGPSData,
-                         getSingleData,
-                     }) => {
-    const {angle = 0, coordinate = [0, 0], active = false, display_name, type, device_id, date_time} = car || {};
+    const plate = description || display_name;
 
-    const [position, setPosition] = useState({lat: coordinate[0], lng: coordinate[1]});
-    const [rotation, setRotation] = useState(angle);
-    const [hovered, setHovered] = useState(false);
+    const [position, setPosition] = useState([+coordinate[0], +coordinate[1]]);
 
+    const markerRef = useRef(null);
     const prevTimeRef = useRef(date_time);
-    const rotationRef = useRef(angle);
-    const animationRef = useRef(null);
+    const rotationRef = useRef(+angle || 0);
+    const positionRef = useRef(position);
+    const hasMovedRef = useRef(false);
+    const frameRef = useRef(null);
+    const hoveredRef = useRef(false);
 
-    const lerp = (a, b, t) => a + (b - a) * t;
+    const iconUrl = vehicleMarkerIcon(type, active);
+
+    const icon = useMemo(
+        () => {
+            const startRotation = Math.round(rotationRef.current) || 0;
+            return L.divIcon({
+                className: 'vehicle-marker',
+                // faqat transport rasmi: harakat yo'nalishiga qarab buriladi, atrofida hech narsa yo'q
+                html: `
+                    <span class="vehicle-marker__body" style="transform:rotate(${startRotation}deg)">
+                        <img class="vehicle-marker__img" src="${escapeHtml(iconUrl)}" alt="" draggable="false"/>
+                    </span>
+                    ${showPlate && plate ? `<span class="vehicle-marker__plate">${escapeHtml(plate)}</span>` : ''}
+                `,
+                iconSize: [SIZE, SIZE],
+                iconAnchor: [SIZE / 2, SIZE / 2],
+            });
+        },
+        [iconUrl, showPlate, plate]
+    );
+
+    const paint = () => {
+        const body = markerRef.current?.getElement()?.querySelector('.vehicle-marker__body');
+        if (!body) return;
+        const scale = hoveredRef.current || selected ? 1.15 : 1;
+        body.style.transform = `rotate(${rotationRef.current}deg) scale(${scale})`;
+    };
 
     useEffect(() => {
-        if (!coordinate || !date_time) return;
+        positionRef.current = position;
+        // belgi xaritada siljigandan keyin xabar beriladi — iz chizig'i undan oldinga o'tmaydi
+        onMove?.(device_id, position);
+        paint();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [position, selected, icon]);
 
-        const start = {...position};
-        const end = {lat: coordinate[0], lng: coordinate[1]};
+    useEffect(() => {
+        const end = [+coordinate?.[0], +coordinate?.[1]];
+        if (!isValidPoint(end)) return undefined;
+
+        const start = positionRef.current;
+        const moved = distance(start, end);
+
+        /* GPS titrashi — nishon joyida qolsin */
+        if (moved < JITTER_M) {
+            prevTimeRef.current = date_time;
+            return undefined;
+        }
+
+        /* Aloqa uzilgandan keyingi sakrash — animatsiyasiz ko'chiriladi */
+        if (moved > TELEPORT_M) {
+            if (frameRef.current) cancelAnimationFrame(frameRef.current);
+            prevTimeRef.current = date_time;
+            setPosition(end);
+            positionRef.current = end;
+            paint();
+            return undefined;
+        }
+
         const startRotation = rotationRef.current;
-        const endRotation = angle;
+        const targetHeading = moved >= HEADING_MIN_M
+            ? bearing(start, end)
+            : (hasMovedRef.current ? startRotation : +angle || 0);
+        if (moved >= HEADING_MIN_M) hasMovedRef.current = true;
+        const endRotation = startRotation + shortestTurn(startRotation, targetHeading);
 
-        const timeDiff = (new Date(date_time) - new Date(prevTimeRef.current)) || 3000;
+        /* Polling har `pollInterval` da — undan uzun animatsiya orqada qoladi */
+        const elapsed = date_time ? new Date(date_time) - new Date(prevTimeRef.current) : pollInterval;
+        const duration = Math.min(Math.max(elapsed || pollInterval, 300), pollInterval);
         prevTimeRef.current = date_time;
 
         let startTime;
+        if (frameRef.current) cancelAnimationFrame(frameRef.current);
 
-        if (animationRef.current) cancelAnimationFrame(animationRef.current);
-
-        const animateMarker = (timestamp) => {
+        const step = (timestamp) => {
             if (!startTime) startTime = timestamp;
-            const progress = Math.min((timestamp - startTime) / timeDiff, 1);
+            const progress = Math.min((timestamp - startTime) / duration, 1);
 
-            const newLat = lerp(start.lat, end.lat, progress);
-            const newLng = lerp(start.lng, end.lng, progress);
-            const newRotation = lerp(startRotation, endRotation, progress);
-
-            setPosition({lat: newLat, lng: newLng});
-            setRotation(newRotation);
-            rotationRef.current = newRotation;
+            const current = [lerp(start[0], end[0], progress), lerp(start[1], end[1], progress)];
+            setPosition(current);
+            // burilish siljishdan biroz oldin tugaydi — muyulishlar tabiiy ko'rinadi
+            rotationRef.current = lerp(startRotation, endRotation, Math.min(progress * 1.6, 1));
+            paint();
 
             if (progress < 1) {
-                animationRef.current = requestAnimationFrame(animateMarker);
+                frameRef.current = requestAnimationFrame(step);
             } else {
                 setPosition(end);
-                setRotation(endRotation);
+                rotationRef.current = endRotation;
+                paint();
             }
         };
 
-        animationRef.current = requestAnimationFrame(animateMarker);
-
-        return () => cancelAnimationFrame(animationRef.current);
-    }, [coordinate, angle, date_time]);
-
-    const iconUrl = vehicleIcons[type]
-        ? (active ? vehicleIcons[type].active : vehicleIcons[type].inactive)
-        : car;
-
-    const handleClick = () => {
-        getSingleData(device_id); // 🔥 HAR BOSILGANDA YANGILANADI
-
-        setHistoryParams({...historyParams,   fromDate: "", toDate: "", deviceId: device_id});
-
-        onTransportInfoChange();
-        setMapCenter(position);
-        setMapZoom(14);
-        setSelectedCar(device_id);
-    };
-
+        frameRef.current = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(frameRef.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [coordinate?.[0], coordinate?.[1], angle, date_time]);
 
     return (
-        <>
-            <OverlayView
-                position={position}
-                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+        <Marker
+            ref={markerRef}
+            position={position}
+            icon={icon}
+            zIndexOffset={selected ? 1000 : 0}
+            eventHandlers={{
+                click: () => onSelect(device_id),
+                mouseover: () => {
+                    hoveredRef.current = true;
+                    paint();
+                },
+                mouseout: () => {
+                    hoveredRef.current = false;
+                    paint();
+                },
+            }}
+        >
+            <Tooltip
+                key={selected ? 'pinned' : 'hover'}
+                permanent={selected}
+                direction="top"
+                offset={[0, -SIZE / 2]}
+                className="gps-tooltip"
+                opacity={1}
             >
-                <div
-                    onClick={handleClick}
-                    onMouseEnter={() => setHovered(true)}
-                    onMouseLeave={() => setHovered(false)}
-                    style={{
-                        width: 50,
-                        height: 50,
-                        transform: `
-        translate(-50%, -50%)
-        rotate(${rotation}deg)
-        scale(${hovered || selectedCar === device_id ? 1.15 : 1})
-      `,
-                        transformOrigin: "center center",
-                        transition: "transform 0.25s ease",
-                        cursor: "pointer",
-                        willChange: "transform"
-                    }}
-                >
-                    <img
-                        src={iconUrl}
-                        alt="vehicle"
-                        draggable={false}
-                        style={{
-                            width: "100%",
-                            height: "100%",
-                            pointerEvents: "none"
-                        }}
-                    />
-                </div>
-            </OverlayView>
-
-
-            {(hovered || selectedCar === device_id) && (
-                <InfoWindow
-                    position={position}
-                    options={{disableAutoPan: true}}
-                    onCloseClick={() => setSelectedCar(null)}
-                >
-                    <div
-                        className="marker_tooltip"
-                        onMouseEnter={() => setHovered(true)}
-                        onMouseLeave={() => setHovered(false)}
-                    >
-                        <h3 style={{margin: 0, fontSize: "16px"}}>
-                            {display_name}
-                        </h3>
-                    </div>
-                </InfoWindow>
-            )}
-        </>
+                <span className="gps-tooltip__row">
+                    <span className={`gps-tooltip__dot${active ? ' is-active' : ''}`}/>
+                    {display_name}
+                </span>
+            </Tooltip>
+        </Marker>
     );
 };
 

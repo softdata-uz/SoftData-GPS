@@ -1,321 +1,386 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {BrowserRouter, NavLink, useLocation} from 'react-router-dom';
+import {useDispatch} from 'react-redux';
+import {useTranslation} from 'react-i18next';
+import {Tooltip} from 'antd';
 
-import {ip} from "../../ip";
-import {message, Popover} from "antd";
-import axios from "axios";
-import {Button, Drawer, Radio, Space} from 'antd';
-import {BrowserRouter, Link} from 'react-router-dom'
-import {useDispatch, useSelector} from "react-redux";
-
-import mapIcon from '../../image/map.svg';
-import devise from '../../image/devise.svg';
-import chart from '../../image/chart.svg';
-import logoIcon from '../../image/Logo (5).png';
-import gps_s from '../../image/saidnaricon/airaportGPS.svg';
-import gps_s2 from '../../image/saidnaricon/Group 55884.png';
-import badge from '../../image/badge.svg';
-import user from '../../image/user.svg';
-import user2 from '../../image/user.png';
-import mobileLogo from '../../image/Group 55882 (3).png';
-import burger from '../../image/Vector (60).png';
-import exitIcon from '../../image/logout.png';
-import editIcon from '../../image/edit-2.png';
-
-import AdminPage from "../adminPage/AdminPage";
-import Admin from "../AdminModal/Admin";
+import {ReactComponent as Logo} from '../../assets/brand/softdata-gps-logo.svg';
+import {
+    ChartIcon,
+    ChevronDownIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    DeviceIcon,
+    GlobeIcon,
+    LogoutIcon,
+    MapIcon,
+    MoonIcon,
+    SunIcon,
+    UserIcon,
+    UsersIcon,
+} from '../../ui/icons';
+import ProfileDrawer from './ProfileDrawer';
+import RootPage from '../../pages/root';
+import {storage} from '../../services';
+import {LoginFailure} from '../../redux/action/action';
+import {ThemeProvider, useTheme} from '../../theme/ThemeContext';
+import useMediaQuery from '../../ui/useMediaQuery';
 
 import './saidbar.css';
-import {MdExitToApp} from "react-icons/md";
-import {FaEdit} from "react-icons/fa";
 
-import {DownOutlined, MenuFoldOutlined, MenuUnfoldOutlined,} from '@ant-design/icons';
-import RootPage from "../../pages/root";
-import {useLocation} from "react-router";
-import {useTranslation} from "react-i18next";
-import {storage} from "../../services";
-import {LoginFailure} from "../../redux/action/action";
+/* Header — VIP Parking loyihasidagi Layout.jsx (TopNav + TopBar + profil menyusi)
+   bilan bir xil tuzilish; menyu bandlari — GPS bo'limlari. */
 
-import trainLogo from '../../image/lOGO (6).png';
-import trainLogoMobile from '../../image/logoTrain.png';
+const LANGUAGES = [
+    {value: 'uz', short: 'UZ', label: "O‘zbekcha"},
+    {value: 'ru', short: 'RU', label: 'Русский'},
+    {value: 'en', short: 'EN', label: 'English'},
+];
 
+const THEME_MODES = [
+    {value: 'light', labelKey: "Yorug'", Icon: SunIcon},
+    {value: 'dark', labelKey: "Qorong'i", Icon: MoonIcon},
+];
+
+/* Backend rol kodlari — tarjima kalitlariga moslash */
+const ROLE_LABELS = {
+    superadmin: 'Super Admin',
+    king: 'Super Admin',
+    admin: 'Admin',
+    operator: 'Operator',
+};
+
+const NAV = [
+    {to: '/maps', icon: MapIcon, label: 'Xarita', roles: null},
+    {to: '/statistic', icon: ChartIcon, label: 'Statistika', roles: null},
+    {to: '/device', icon: DeviceIcon, label: 'Qurilmalar', roles: ['superadmin', 'king', 'admin']},
+    {to: '/admins', icon: UsersIcon, label: 'Adminlar', roles: ['superadmin', 'king']},
+];
+
+const shortName = (u) => [u?.lastname, u?.firstname].filter(Boolean).join(' ') || u?.login || '—';
+const fullName = (u) => [u?.lastname, u?.firstname, u?.fathersname].filter(Boolean).join(' ') || u?.login || '—';
+const initials = (u) => {
+    const parts = [u?.lastname, u?.firstname].filter(Boolean);
+    const source = parts.length ? parts : [u?.login || '?'];
+    return source.map((p) => String(p).trim().charAt(0)).join('').toUpperCase();
+};
+
+const Avatar = ({user, large = false}) => (
+    <span className={`shell-user__avatar${large ? ' shell-user__avatar--lg' : ''}`}>{initials(user)}</span>
+);
+
+/* Bir bosishda tanlanadigan segmentli guruh (radio-guruh semantikasi, ←/→ bilan ham) */
+const Segmented = ({label, value, options, onChange, variant}) => {
+    const onKeyDown = (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const i = options.findIndex((o) => o.value === value);
+        const next = options[(i + (e.key === 'ArrowRight' ? 1 : options.length - 1)) % options.length];
+        onChange(next.value);
+        e.currentTarget.parentElement.querySelector(`[data-value="${next.value}"]`)?.focus();
+    };
+
+    return (
+        <div className={`shell-seg shell-seg--${variant}`} role="radiogroup" aria-label={label}>
+            {options.map((option) => {
+                const active = option.value === value;
+                return (
+                    <Tooltip key={option.value} title={option.title} placement="bottom" mouseEnterDelay={0.3}>
+                        <button
+                            type="button"
+                            role="radio"
+                            aria-checked={active}
+                            aria-label={option.title}
+                            data-value={option.value}
+                            tabIndex={active ? 0 : -1}
+                            className={`shell-seg__item${active ? ' is-active' : ''}`}
+                            onClick={() => onChange(option.value)}
+                            onKeyDown={onKeyDown}
+                        >
+                            {option.content}
+                        </button>
+                    </Tooltip>
+                );
+            })}
+        </div>
+    );
+};
+
+/** Mavzu (yorug'/qorong'i) va til — ikki alohida guruh. */
+const PrefsSwitch = ({lang, onChangeLanguage}) => {
+    const {t} = useTranslation();
+    const {mode, setMode} = useTheme();
+
+    const themeOptions = useMemo(() => THEME_MODES.map(({value, labelKey, Icon}) => ({
+        value, title: t(labelKey), content: <Icon size={17}/>,
+    })), [t]);
+    const languageOptions = useMemo(() => LANGUAGES.map(({value, short, label}) => ({
+        value, title: label, content: short,
+    })), []);
+
+    return (
+        <>
+            <div className="shell-prefs">
+                <Segmented variant="icon" label={t('Mavzu')} value={mode} onChange={setMode}
+                           options={themeOptions}/>
+            </div>
+            <span className="shell-top__sep" aria-hidden="true"/>
+            <div className="shell-prefs shell-prefs--lang">
+                <GlobeIcon size={18} className="shell-prefs__globe" aria-hidden="true"/>
+                <span className="shell-prefs__divider" aria-hidden="true"/>
+                <Segmented variant="text" label={t('Til')} value={lang} onChange={onChangeLanguage}
+                           options={languageOptions}/>
+            </div>
+        </>
+    );
+};
+
+/* Gorizontal menyu — logo yonida. Sig'masa skroll bo'ladi va chekkalarda strelkalar chiqadi. */
+const TopNav = ({items}) => {
+    const {t} = useTranslation();
+    const {pathname} = useLocation();
+    const iconOnly = useMediaQuery('(max-width: 860px)');
+    const scrollRef = useRef(null);
+    const [overflow, setOverflow] = useState({left: false, right: false});
+
+    const update = useCallback(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        setOverflow({
+            left: el.scrollLeft > 0,
+            right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+        });
+    }, []);
+
+    useEffect(() => {
+        update();
+        const el = scrollRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', update);
+            return () => window.removeEventListener('resize', update);
+        }
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [update]);
+
+    // faol bo'lim ko'rinmay qolsa — unga skroll
+    useEffect(() => {
+        scrollRef.current?.querySelector('.is-active')?.scrollIntoView?.({block: 'nearest', inline: 'nearest'});
+    }, [pathname]);
+
+    const scrollBy = (dir) => scrollRef.current?.scrollBy({left: dir * 200, behavior: 'smooth'});
+
+    return (
+        <div className="shell-topnav">
+            {overflow.left && (
+                <button type="button" className="shell-topnav__arrow shell-topnav__arrow--left"
+                        onClick={() => scrollBy(-1)} aria-hidden="true" tabIndex={-1}>
+                    <ChevronLeftIcon size={18}/>
+                </button>
+            )}
+            <nav className="shell-topnav__scroll" ref={scrollRef} onScroll={update}>
+                {items.map(({to, label, icon: Icon}) => (
+                    <Tooltip key={to} title={iconOnly ? t(label) : null} placement="bottom" mouseEnterDelay={0.25}>
+                        <NavLink
+                            to={to}
+                            aria-label={t(label)}
+                            className={({isActive}) => `shell-topnav__link${isActive ? ' is-active' : ''}`}
+                        >
+                            <Icon size={20}/>
+                            <span className="shell-topnav__label">{t(label)}</span>
+                        </NavLink>
+                    </Tooltip>
+                ))}
+            </nav>
+            {overflow.right && (
+                <button type="button" className="shell-topnav__arrow shell-topnav__arrow--right"
+                        onClick={() => scrollBy(1)} aria-hidden="true" tabIndex={-1}>
+                    <ChevronRightIcon size={18}/>
+                </button>
+            )}
+        </div>
+    );
+};
+
+const UserMenu = ({user, lang, onChangeLanguage, onProfile, onLogout}) => {
+    const {t} = useTranslation();
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef(null);
+    const roleLabel = user?.role ? t(ROLE_LABELS[user.role] || user.role) : '';
+
+    useEffect(() => {
+        if (!open) return undefined;
+        const onDown = (e) => !rootRef.current?.contains(e.target) && setOpen(false);
+        const onKey = (e) => e.key === 'Escape' && setOpen(false);
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('mousedown', onDown);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [open]);
+
+    return (
+        <div className="shell-user" ref={rootRef}>
+            <button
+                type="button"
+                className={`shell-user__trigger${open ? ' is-open' : ''}`}
+                onClick={() => setOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={open}
+            >
+                <Avatar user={user}/>
+                <span className="shell-user__text">
+                    <span className="shell-user__name">{shortName(user)}</span>
+                    {roleLabel && <span className="shell-user__role">{roleLabel}</span>}
+                </span>
+                <ChevronDownIcon size={16} className="shell-user__chevron"/>
+            </button>
+
+            {open && (
+                <div className="shell-menu" role="menu">
+                    <div className="shell-menu__head">
+                        <Avatar user={user} large/>
+                        <span className="shell-menu__head-text">
+                            <span className="shell-menu__head-name" title={fullName(user)}>{fullName(user)}</span>
+                            <span className="shell-menu__head-meta">
+                                {roleLabel && <span className="shell-role-badge">{roleLabel}</span>}
+                                {user?.login && <span className="shell-menu__head-login">@{user.login}</span>}
+                            </span>
+                        </span>
+                    </div>
+                    {/* telefonda header'da joy yo'q — mavzu va til menyuda */}
+                    <div className="shell-menu__prefs">
+                        <PrefsSwitch lang={lang} onChangeLanguage={onChangeLanguage}/>
+                    </div>
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="shell-menu__item"
+                        onClick={() => {
+                            setOpen(false);
+                            onProfile();
+                        }}
+                    >
+                        <span className="shell-menu__item-icon"><UserIcon size={16}/></span>
+                        {t('Profil')}
+                    </button>
+                    <span className="shell-menu__divider" aria-hidden="true"/>
+                    <button
+                        type="button"
+                        role="menuitem"
+                        className="shell-menu__item shell-menu__item--danger"
+                        onClick={() => {
+                            setOpen(false);
+                            onLogout();
+                        }}
+                    >
+                        <span className="shell-menu__item-icon"><LogoutIcon size={16}/></span>
+                        {t('Chiqish')}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/** Telefon uchun pastki navigatsiya paneli (ikonka + nom). */
+const MobileNav = ({user}) => {
+    const {t} = useTranslation();
+    const items = NAV.filter((item) => !item.roles || item.roles.includes(user?.role));
+
+    return (
+        <nav className="shell-tabbar" aria-label={t('Menyu')}>
+            {items.map(({to, label, icon: Icon}) => (
+                <NavLink key={to} to={to}
+                         className={({isActive}) => `shell-tabbar__item${isActive ? ' is-active' : ''}`}>
+                    <span className="shell-tabbar__icon"><Icon size={20}/></span>
+                    <span className="shell-tabbar__label">{t(label)}</span>
+                </NavLink>
+            ))}
+        </nav>
+    );
+};
+
+const TopBar = ({user, lang, onChangeLanguage, onProfile, onLogout}) => {
+    const items = NAV.filter((item) => !item.roles || item.roles.includes(user?.role));
+
+    return (
+        <header className="shell-top">
+            {/* logotipdagi yozuv `currentColor` — mavzuga qarab rang oladi */}
+            <NavLink to="/maps" aria-label="SoftData GPS" className="shell-top__logo">
+                <Logo/>
+            </NavLink>
+
+            <TopNav items={items}/>
+
+            <div className="shell-top__right">
+                <PrefsSwitch lang={lang} onChangeLanguage={onChangeLanguage}/>
+                <span className="shell-top__sep" aria-hidden="true"/>
+                <UserMenu user={user} lang={lang} onChangeLanguage={onChangeLanguage}
+                          onProfile={onProfile} onLogout={onLogout}/>
+            </div>
+        </header>
+    );
+};
+
+/** Ilova qobig'i — yuqori gorizontal panel + kontent maydoni. */
 const Saidbar = () => {
-
-    const user = storage.local.get("user");
+    const [user, setUser] = useState(() => storage.local.get('user') || {});
     const dispatch = useDispatch();
     const {t, i18n} = useTranslation();
-    const [lang, setLang] = useState(localStorage.getItem('i18nextLng') || 'uz')
 
+    const [lang, setLang] = useState((i18n.language || localStorage.getItem('i18nextLng') || 'uz').slice(0, 2));
+    const [, setPathName] = useState('');
+    const [profileOpen, setProfileOpen] = useState(false);
 
-    const [pathName, setPathName] = useState('');
-
-
-    const [isOpenAdminModal, setIsOpenAdminModal] = useState(false);
-
-
-    const [open, setOpen] = useState(false);
-    const [placement, setPlacement] = useState('right');
-    const showDrawer = () => {
-        setOpen(true);
+    const onChangeLanguage = (code) => {
+        setLang(code);
+        i18n.changeLanguage(code);
+        localStorage.setItem('i18nextLng', code);
     };
-    const onClose = () => {
-        setOpen(false);
+
+    // profil saqlangach header darhol yangilansin
+    const onProfileSaved = (profile) => {
+        const next = {...user, ...profile};
+        storage.local.set('user', next);
+        setUser(next);
     };
 
     const logout = () => {
         dispatch(LoginFailure());
         localStorage.removeItem('gps-x-access-token');
         i18n.changeLanguage('uz');
-    }
-
-    const onChangeLanguage = (event) => {
-        setLang(event);
-        i18n.changeLanguage(event);
-        localStorage.setItem('i18nextLng', event);
-    }
-    // ----admin--
-    const [openPopover, setOpenPopover] = useState(false);
-    const hide = () => {
-        setOpenPopover(false);
     };
-    const handleOpenChange = (newOpen) => {
-        setOpenPopover(newOpen);
-    };
-    const openChangeAdmin = () => {
-        setIsOpenAdminModal(true);
-        hide();
-        onClose();
-    }
-    // ----admin--
-
 
     return (
-        <BrowserRouter>
-            <div className="full_content">
-                <Admin
-                    isOpenAdminModal={isOpenAdminModal}
-                    setIsOpenAdminModal={setIsOpenAdminModal}
-                    user={user}
-                />
-                <div className="full_content_right">
+        <ThemeProvider>
+            <BrowserRouter>
+                <div className="full_content">
+                    <div className="full_content_right">
+                        <TopBar user={user} lang={lang} onChangeLanguage={onChangeLanguage}
+                                onProfile={() => setProfileOpen(true)} onLogout={logout}/>
 
-                    <div className="header">
-                        <div className="header_left">
-                            <div className="header_left_inner">
-                                <Link to="/maps">
-                                    <div
-                                        //     onClick={() => setActiveContent("leaflet", setFilterTransport({
-                                        //     ...filterTransPort,
-                                        //     type: ""
-                                        // }))}
-                                        className=""
-                                        style={{marginRight: "20px", display: "flex", alignItems: "center"}}>
-                                        <img src={logoIcon} alt=""/>
-                                    </div>
-                                </Link>
-
-                                <Link to="/maps" style={{display: "flex", alignItems: "center"}}>
-                                    <div
-                                        className={pathName === "/maps/general" ? "header_left_inner_item_active" : "header_left_inner_item"}
-                                    >
-                                        <img
-                                            className={pathName === "/maps/general" ? "header_left_icon_active" : "header_left_icon"}
-                                            src={mapIcon} alt=""
-                                        />
-                                        <span
-                                            className={pathName === "/maps/general" ? "header_left_icon_active" : "header_left_icon"}>
-                                            {t("Xarita")}
-                                        </span>
-                                    </div>
-                                </Link>
-
-                                <Link to='/statistic' style={{display: "flex", alignItems: "center"}}>
-                                    <div
-                                        className={pathName === "/statistic" ? "header_left_inner_item_active" : "header_left_inner_item"}>
-                                        <img
-                                            className={pathName === "/statistic" ? "header_left_icon_active" : "header_left_icon"}
-                                            src={chart} alt=""/>
-                                        <span
-                                            className={pathName === "/statistic" ? "header_left_icon_active" : "header_left_icon"}>
-                                            {t("Statistika")}
-                                </span>
-                                    </div>
-                                </Link>
-
-                                {
-                                    (user?.role === "superadmin" || user.role === "king" || user.role === "admin") &&
-                                    <Link to='/device' style={{display: "flex", alignItems: "center"}}>
-                                        <div
-                                            className={pathName === "/device" ? "header_left_inner_item_active" : "header_left_inner_item"}>
-                                            <img
-                                                className={pathName === "/device" ? "header_left_icon_active" : "header_left_icon"}
-                                                src={devise} alt=""/>
-                                            <span
-                                                className={pathName === "/device" ? "header_left_icon_active" : "header_left_icon"}>
-                                            {t("Qurilmalar")}
-                                </span>
-                                        </div>
-                                    </Link>
-                                }
-
-                                {
-                                    (user.role === "superadmin" || user.role === "king") &&
-                                    <Link to='/admins' style={{display: "flex", alignItems: "center"}}>
-                                        <div
-                                            className={pathName === "/admins" ? "header_left_inner_item_active" : "header_left_inner_item"}>
-                                            <img
-                                                className={pathName === "/admins" ? "header_left_icon_active" : "header_left_icon"}
-                                                src={user2} alt=""/>
-                                            <span
-                                                className={pathName === "/admins" ? "header_left_icon_active" : "header_left_icon"}>
-                                    {t("Adminlar")}
-                                       </span>
-                                        </div>
-                                    </Link>
-                                }
-                            </div>
-
-                            <Link to="/">
-                                <div className="header_left_inner_mobile">
-                                    <img src={logoIcon} className="header_left_inner_mobile_logo"/>
-                                </div>
-                            </Link>
+                        <div className="content">
+                            <RootPage setPathName={setPathName}/>
                         </div>
 
-                        <div className="header_right">
-                            <div className="header_right_inner">
-
-
-                                <div className="languages">
-                                    <div
-                                        className={lang == "uz" ? "languages_item languages_item_active" : "languages_item"}
-                                        onClick={() => onChangeLanguage('uz')}>
-                                        O‘z
-                                    </div>
-                                    <div
-                                        className={lang == "ru" ? "languages_item languages_item_active" : "languages_item"}
-                                        onClick={() => onChangeLanguage('ru')}>
-                                        Ру
-                                    </div>
-                                    <div
-                                        className={lang == "en" ? "languages_item languages_item_active" : "languages_item"}
-                                        onClick={() => onChangeLanguage('en')}>
-                                        En
-                                    </div>
-                                </div>
-
-                                <div className="badge_admin">
-                                    <div className="badge_admin_item">
-                                        <img src={badge} alt=""/>
-                                    </div>
-                                    {/*<div onClick={() => setIsOpenAdminModal(true)} className="rount_img">*/}
-                                    {/*{user && <img src={`${ip}/${user.image}`} alt=""/>}*/}
-                                    {/*</div>*/}
-
-                                    <Popover
-                                        open={openPopover}
-                                        onOpenChange={handleOpenChange}
-                                        content={<div className="contentHeader">
-                                            {/*<div className="contentHeader_inner" onClick={openChangeAdmin}>*/}
-                                            {/*    <img src={editIcon}/>*/}
-                                            {/*    <p>{t("Tahrirlash")}</p>*/}
-                                            {/*</div>*/}
-                                            <div className="contentHeader_inner" onClick={logout}>
-                                                {/*<MdExitToApp/>*/}
-                                                <img src={exitIcon}/>
-                                                <p>{t("Chiqish")}</p>
-                                            </div>
-                                        </div>} trigger="click" placement="leftBottom">
-                                        <div className="monitoring_header_user">
-                                            {/*<img src={`${ip}/${user?.image}`}/>*/}
-                                            <div>
-                                                <p>{user?.lastname + " " + user?.firstname + " " + user?.fathersname}</p>
-                                                <p style={{color: "#636C79", fontWeight: "400"}}>{user?.role}</p>
-                                            </div>
-                                            <DownOutlined/>
-                                        </div>
-                                    </Popover>
-
-                                </div>
-
-
-                                <div className="badge_admin_mobile">
-                                    <div className="badge_admin_item">
-                                        <img src={burger} onClick={showDrawer}/>
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
+                        <MobileNav user={user}/>
                     </div>
 
-                    <div className="content">
-                        <RootPage setPathName={setPathName}/>
-                    </div>
-
-                    <>
-                        <Drawer
-                            title=""
-                            placement={placement}
-                            // closable={false}
-                            onClose={onClose}
-                            open={open}
-                            key={placement}
-                            style={{height: "100vh"}}
-                        >
-                            <div className="header_drawer_menu">
-                                <div className="header_drawer_menu_inner_head">
-                                    <div>
-                                        <span>{user?.lastname + " " + user?.firstname + " " + user?.fathersname}</span>
-                                        <br/>
-                                        <span>{user?.role}</span>
-                                    </div>
-                                    {/*<img src={`${ip}/${user?.image}`}/>*/}
-                                    {/*<span>{user?.lastname + " " + user?.firstname + " " + user?.fathersname}</span>*/}
-                                    {/*<img src={user}/><span>Administrator</span>*/}
-                                </div>
-                                <Link to="/" className="header_drawer_menu_inner" onClick={() => setOpen(false)}>
-                                    <div className="header_drawer_menu_inner_inner">
-                                        <img src={mapIcon}/><span>{t("Xarita")}</span>
-                                    </div>
-                                </Link>
-                                <Link to="/statistic" className="header_drawer_menu_inner"
-                                      onClick={() => setOpen(false)}>
-                                    <div className="header_drawer_menu_inner_inner">
-                                        <img src={chart}/><span>{t("Statistika")}</span>
-                                    </div>
-                                </Link>
-                                <Link to="/device" className="header_drawer_menu_inner" onClick={() => setOpen(false)}>
-                                    <div className="header_drawer_menu_inner_inner">
-                                        <img src={devise}/><span>{t("Qurilmalar")}</span>
-                                    </div>
-                                </Link>
-                                {
-                                    (user.role === "superadmin" || user.role === "king") &&
-                                    <Link to="/admins" className="header_drawer_menu_inner"
-                                          onClick={() => setOpen(false)}>
-                                        <div className="header_drawer_menu_inner_inner">
-                                            <img src={user2}/><span>{t("Adminlar")}</span>
-                                        </div>
-                                    </Link>
-                                }
-                                {/*<div className="header_drawer_menu_inner" onClick={openChangeAdmin}>*/}
-                                {/*<div className="header_drawer_menu_inner_inner">*/}
-                                {/*<img src={editIcon}/><span>{t("Tahrirlash")}</span>*/}
-                                {/*</div>*/}
-                                {/*</div>*/}
-                                <div className="header_drawer_menu_inner" onClick={logout}>
-                                    <div className="header_drawer_menu_inner_inner">
-                                        <img src={exitIcon}/><span>{t("Chiqish")}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </Drawer>
-                    </>
-
+                    <ProfileDrawer
+                        open={profileOpen}
+                        onClose={() => setProfileOpen(false)}
+                        user={user}
+                        roleLabel={user?.role ? t(ROLE_LABELS[user.role] || user.role) : ''}
+                        initials={initials(user)}
+                        onSaved={onProfileSaved}
+                    />
                 </div>
-            </div>
-        </BrowserRouter>
-    )
+            </BrowserRouter>
+        </ThemeProvider>
+    );
 };
 
 export default Saidbar;

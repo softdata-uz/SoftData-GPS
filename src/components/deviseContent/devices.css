@@ -1,0 +1,396 @@
+/* ================= Devices page =================
+   1:1 with SoftData-AirPort-GPS features/devices (Tailwind classes → tokens.css). */
+
+/* flex h-full flex-col gap-3xl overflow-auto p-3xl */
+.dv {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3xl);
+    height: 100%; /* .content balandligini to'ldiradi */
+    overflow: auto;
+    padding: var(--spacing-3xl);
+    background: var(--bg-secondary);
+    font-family: var(--font-family-body);
+    color: var(--text-primary);
+    box-sizing: border-box;
+}
+
+.dv *,
+.dv *::before,
+.dv *::after {
+    box-sizing: border-box;
+}
+
+/* ---------- PageHeader ---------- */
+.dv-header {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+.dv-header__text {
+    min-width: 0;
+}
+
+.dv-header h1 {
+    margin: 0;
+    font-size: var(--font-size-display-xs);
+    line-height: var(--line-height-display-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.dv-header p {
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-text-md);
+    line-height: var(--line-height-text-md);
+    color: var(--text-tertiary);
+}
+
+.dv-header__actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+@media (min-width: 768px) {
+    .dv-header {
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+}
+
+/* ---------- type chips ---------- */
+.dv-chips {
+    flex-shrink: 0; /* past ekranda jadval ostida siqilib qolmasin */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+/* ---------- DataTable ---------- */
+.dv-table {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 420px; /* past ekranda sahifa o'zi aylanadi */
+    overflow: hidden;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-xs);
+}
+
+.dv-table__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-xl);
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.dv-search {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .dv-search { max-width: var(--width-xxs); }
+}
+
+.dv-table__filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.dv-table__body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.dv-table__foot {
+    flex-shrink: 0;
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-top: 1px solid var(--border-secondary);
+    background: var(--bg-primary);
+}
+
+
+/* antd Table — token bridge (scoped to this page) */
+.dv-table .ant-table-wrapper .ant-table {
+    background: transparent;
+}
+
+.dv-table .ant-table-wrapper .ant-table-thead > tr > th {
+    font-size: var(--font-size-text-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.dv-table .ant-table-wrapper .ant-table-tbody > tr > td {
+    font-size: var(--font-size-text-sm);
+    color: var(--text-tertiary);
+}
+
+.dv-table .ant-table-wrapper .ant-table-tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+/* Namuna (Figma: Application / Table) bilan bir xil o'lchamlar: barcha
+   kataklar 12px × 24px. Global index.css 8px/12px ni !important bilan beradi,
+   shuning uchun bu yerda ham !important kerak. */
+.dv-table .ant-table-wrapper .ant-table-thead > tr > th,
+.dv-table .ant-table-wrapper .ant-table-tbody > tr.ant-table-row > td {
+    padding: var(--spacing-lg) var(--spacing-3xl) !important;
+}
+
+/* antd'ning yashirin o'lchov qatori — global padding uni 16px bo'sh chiziqqa
+   aylantirib yuborardi. */
+.dv-table .ant-table-wrapper .ant-table-tbody > tr.ant-table-measure-row > td {
+    padding: 0 !important;
+    border: 0 !important;
+    height: 0 !important;
+}
+
+.dv-muted {
+    color: var(--text-tertiary);
+}
+
+.dv-name {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    text-align: left;
+    cursor: pointer;
+}
+
+.dv-name__title {
+    font-size: var(--font-size-text-sm);
+    line-height: var(--line-height-text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dv-name:hover .dv-name__title {
+    color: var(--text-brand-secondary);
+}
+
+.dv-name__sub {
+    font-size: var(--font-size-text-xs);
+    line-height: var(--line-height-text-xs);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dv-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-xs);
+}
+
+/* Jadval amallari — ixcham kvadrat ikonka-tugmalar: tinch holatda kulrang,
+   hover'da ma'nosiga mos rangli fon (tahrirlash — brend, o'chirish — xato). */
+.dv-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--fg-tertiary);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.dv-action:focus-visible {
+    outline: 2px solid var(--border-brand_alt);
+    outline-offset: 1px;
+}
+
+/* utility tokenlari yorug' va qorong'i rejimda fon/ikonka kontrastini saqlaydi */
+.dv-action--edit:hover {
+    background: var(--utility-brand-50);
+    border-color: var(--utility-brand-200);
+    color: var(--utility-brand-700);
+}
+
+.dv-action--delete:hover {
+    background: var(--utility-error-50);
+    border-color: var(--utility-error-200);
+    color: var(--utility-error-700);
+}
+
+.dv-action:active {
+    transform: scale(0.94);
+}
+
+/* ---------- details drawer ---------- */
+.dv-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.dv-section h3 {
+    margin: 0;
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-secondary);
+    font-size: var(--font-size-text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-secondary);
+}
+
+.dv-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-lg) 0;
+    border-bottom: 1px solid var(--border-secondary);
+}
+
+.dv-row:last-child {
+    border-bottom: 0;
+}
+
+.dv-row__label {
+    flex-shrink: 0;
+    font-size: var(--font-size-text-sm);
+    color: var(--text-tertiary);
+}
+
+.dv-row__value {
+    font-size: var(--font-size-text-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+    text-align: right;
+}
+
+/* form sections: gap-3xl between sections */
+.dv-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3xl);
+}
+
+/* antd scroll.y bilan tana doim `overflow-y: scroll` oladi — qatorlar kam bo'lsa
+   ham bo'sh aylantirish chizig'i chiqadi. Faqat kerak bo'lganda ko'rinsin. */
+.dv-table .ant-table-body {
+    overflow-y: auto !important;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-primary) transparent;
+}
+
+.dv-table .ant-table-header .ant-table-cell-scrollbar {
+    display: none;
+}
+
+.dv-table .dv-row-click {
+    cursor: pointer;
+}
+
+.dv-table .dv-row-click:hover > td {
+    background: var(--bg-primary_hover) !important;
+}
+
+/* ==========================================================================
+   Telefon (≤767px) — Qurilmalar va Adminlar sahifalari uchun umumiy
+   ========================================================================== */
+@media (max-width: 767px) {
+    .dv {
+        gap: var(--spacing-xl);
+        padding: var(--spacing-xl);
+    }
+
+    .dv-header h1 {
+        font-size: var(--font-size-text-xl);
+        line-height: var(--line-height-text-xl);
+    }
+
+    .dv-header p {
+        font-size: var(--font-size-text-sm);
+        line-height: var(--line-height-text-sm);
+    }
+
+    /* tugmalar teng kenglikda, butun qatorni egallaydi */
+    .dv-header__actions {
+        flex-wrap: nowrap;
+        gap: var(--spacing-md);
+    }
+
+    .dv-header__actions > .ui-btn {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* filtr chiplari bitta qatorda, yonga suriladi */
+    .dv-chips {
+        flex-wrap: nowrap;
+        margin: 0 calc(var(--spacing-xl) * -1);
+        padding: 0 var(--spacing-xl) 2px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .dv-chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    .dv-chips > * {
+        flex: none;
+    }
+
+    /* jadval qolgan balandlikni egallaydi: sarlavha, tugmalar va sahifalash joyida turadi,
+       faqat qatorlar aylanadi (sahifaning o'zi aylanmaydi) */
+    .dv-table {
+        min-height: 240px;
+    }
+
+    .dv-table__toolbar {
+        padding: var(--spacing-lg);
+    }
+
+    .dv-table .ant-table-wrapper .ant-table-thead > tr > th,
+    .dv-table .ant-table-wrapper .ant-table-tbody > tr.ant-table-row > td {
+        padding: var(--spacing-md) var(--spacing-lg) !important;
+    }
+
+    .dv-table__foot {
+        padding: var(--spacing-md) var(--spacing-lg);
+    }
+}
+
+/* PanelLoader jadval ustida turishi uchun */
+.dv-table__body {
+    position: relative;
+}
+
+.dv-wait {
+    display: block;
+    height: 180px;
+}

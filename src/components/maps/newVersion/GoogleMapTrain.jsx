@@ -1,1365 +1,850 @@
-import React, {useEffect, useState, useRef, useCallback, useMemo} from "react";
-import {ip} from "../../../ip";
-
-import {
-    LoadScriptNext,
-    GoogleMap,
-    Polyline,
-    Marker,
-    useLoadScript,
-    OverlayView,
-    InfoWindow
-} from "@react-google-maps/api";
-
-import searchIconNew from '../../../image/search-lg (2).png';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {AttributionControl, MapContainer, Marker, Polyline, Popup, ScaleControl, TileLayer, Tooltip as MapTooltip, useMap} from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {Checkbox, Collapse, DatePicker, Drawer, message, Popover, Radio} from "antd";
-import {GrLinkPrevious} from "react-icons/gr";
-import moment from "moment";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "./leaflet.css";
+import {ConfigProvider, Drawer, Tooltip, message} from "antd";
 import axios from "axios";
-
-import teplavozIcon from '../../../icons/iconsNews/Group 55892.png';
-
-import mobileMenuIcon from "../../../image/Icon.png";
-import filterImg from "../../../image/filter-funnel-01.png";
-
-import Loader from "../../loading/Loader";
 import {useTranslation} from "react-i18next";
+import {useOutletContext} from "react-router-dom";
+import {useDispatch} from "react-redux";
+
+import {ip} from "../../../ip";
 import api from "../../../service/api";
-import {Link, Outlet, useNavigate, useOutletContext} from 'react-router-dom';
+import {LoginFailure} from "../../../redux/action/action";
+import {getAntdTheme} from "../../../theme/antdTheme";
+import {useTheme} from '../../../theme/ThemeContext';
+import {Button, Checkbox, EmptyState, SearchInput, cx} from "../../../ui/ui";
+import PanelLoader from "../../loading/PanelLoader";
+import {
+    CloseIcon,
+    ExpandIcon,
+    LayersIcon,
+    MapIcon,
+    MenuIcon,
+    MinusIcon,
+    PlusIcon,
+    TargetIcon,
+} from "../../../ui/icons";
 import TrainMarker from "./TrainMarker";
-import {IoMdRefresh} from "react-icons/io";
+import VehicleDetail from "./VehicleDetail";
+import HistoryPlayback from "./HistoryPlayback";
+import RouteLine, {TrailLine} from "./RouteLine";
+import {JITTER_M, TELEPORT_M, distance, isValidPoint} from "./geo";
+import {escapeHtml} from "./html";
+import {formatDateTime, relativeTime, vehicleIcon, vehicleLabelKey} from "./vehicleMeta";
+import {
+    DEFAULT_CENTER,
+    DEFAULT_ZOOM,
+    FOLLOW_ZOOM,
+    MAX_ZOOM,
+    casingColor,
+    routeColors,
+    tileLayers,
+    trailPalette,
+} from "./mapStyles";
 
-import longIcon from '../../../icons/iconsNews/fi_3564924 (1).png';
-import shortIcon from '../../../icons/iconsNews/fi_3564924.png';
+const POLL_MS = 3000;
+const TRAIL_LAG_MS = 250; // iz nuqtasi belgi unga yetib borgandan keyin qo'shilishi uchun zaxira
+const DETAIL_REFRESH_MS = 15000;
+const SEARCH_DEBOUNCE_MS = 400;
+const MOBILE_MAX = 900;
+const PLATE_ZOOM = 17;
+const TRAIL_LENGTH = 60;
 
+/* Klaster: zich joylashuvda nishonlar bitta doiraga yig'iladi.
+   Yaqinlashganda (17+) guruhlash o'chadi — har bir transport alohida ko'rinsin. */
+const CLUSTER_MAX_RADIUS = 64;
+const CLUSTER_OFF_ZOOM = 17;
 
-const GoogleMapTrain = (props) => {
+const clusterIcon = (cluster) => {
+    const count = cluster.getChildCount();
+    const size = count < 10 ? 'sm' : count < 50 ? 'md' : 'lg';
+    const px = {sm: 32, md: 40, lg: 48}[size];
+    return L.divIcon({
+        html: `<span class="gps-cluster gps-cluster--${escapeHtml(size)}">${Number(count) || 0}</span>`,
+        className: 'gps-cluster-wrap',
+        iconSize: L.point(px, px, true),
+    });
+};
 
+const pinIcon = (label, kind) => L.divIcon({
+    className: 'gps-pin-wrap',
+    html: `<span class="mp-pin ${escapeHtml(kind)}">${escapeHtml(label)}</span>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+});
+
+const STOP_ICONS = {short: pinIcon('S', 'is-short'), long: pinIcon('P', 'is-long')};
+const START_ICON = pinIcon('A', 'is-start');
+const END_ICON = pinIcon('B', 'is-end');
+
+const playheadIcon = L.divIcon({
+    className: 'gps-playhead-wrap',
+    html: '<span class="gps-playhead"></span>',
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+});
+
+const authHeaders = () => ({'x-access-token': localStorage.getItem('gps-x-access-token')});
+
+const toPoint = (c) => [+c?.[0], +c?.[1]];
+
+/** O'zgarmagan transport obyektini saqlab qoladi — marker qayta chizilmaydi. */
+const mergeMarkers = (prev, next) => {
+    const byId = new Map(prev.map(m => [m.device_id, m]));
+    return next.map(n => {
+        const old = byId.get(n.device_id);
+        if (!old) return n;
+        const samePos = old.coordinate?.[0] === n.coordinate?.[0] && old.coordinate?.[1] === n.coordinate?.[1];
+        if (samePos && old.angle === n.angle && old.active === n.active && old.speed === n.speed && old.date_time === n.date_time) {
+            return old;
+        }
+        return samePos ? {...n, coordinate: old.coordinate} : n;
+    });
+};
+
+/** Xarita nusxasini tashqariga beradi va haqiqiy masshtabni kuzatadi. */
+const MapBridge = ({mapRef, onReady, onZoomChange}) => {
+    const map = useMap();
+    useEffect(() => {
+        mapRef.current = map;
+        onReady(true);
+        const report = () => onZoomChange(map.getZoom());
+        report();
+        map.on('zoomend', report);
+        return () => {
+            map.off('zoomend', report);
+            mapRef.current = null;
+            onReady(false);
+        };
+    }, [map, mapRef, onReady, onZoomChange]);
+    return null;
+};
+
+const MapControl = ({active, title, onClick, children}) => (
+    <Tooltip title={title} placement="left">
+        <button type="button" onClick={onClick} className={cx('mp-ctrl', active && 'is-active')} aria-label={title}>
+            {children}
+        </button>
+    </Tooltip>
+);
+
+const GoogleMapTrain = () => {
+    const {t} = useTranslation();
+    const {theme} = useTheme();
+    const antdTheme = useMemo(() => getAntdTheme(theme), [theme]);
+    const dispatch = useDispatch();
     const {filterTransPort, setFilterTransport} = useOutletContext();
 
-    const [selectedCar, setSelectedCar] = useState(null);
-
-    // radio filter Pop
-    const [openFilterPop, setOpenFilterPop] = useState(false);
-    const hidePopover = () => {
-        setOpenFilterPop(false);
-    };
-    const handleOpenChangePopover = (newOpen) => {
-        setOpenFilterPop(newOpen);
-    };
-
-    const [valueRadio, setValueRadio] = useState("all");
-    const onChangeRadio = (e) => {
-        setValueRadio(e.target.value);
-
-        onClose();
-        setFilterTransport({filter: [], type: filterTransPort?.type, status: e.target.value, department: ''});
-        setCheckedList([]);
-        setClickedMarker([]);
-        setDeviseHistoryLine([]);
-        hidePopover()
-    };
-
-    // radio
-
-
-    const {t, i18n} = useTranslation();
-
-
-    const [loading, setLoading] = useState(false)
-
-    const [mapCenter, setMapCenter] = useState({lat: 41.2906041, lng: 69.2898571});
     const mapRef = useRef(null);
+    const mapWrapRef = useRef(null);
+    const [mapReady, setMapReady] = useState(false);
+    const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+    const [satellite, setSatellite] = useState(false);
+    const [showTrails, setShowTrails] = useState(true);
+    const [followSelected, setFollowSelected] = useState(true);
 
-    const [mapZoom, setMapZoom] = useState(14);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= MOBILE_MAX);
+    const [drawerOpen, setDrawerOpen] = useState(false);
 
-    const [checkedList, setCheckedList] = useState([]);
-    const [transportInfo, setTransportInfo] = useState(true);
-    const [clickedMarker, setClickedMarker] = useState({});
-    const [showHistoryBtn, setShowHistoryBtn] = useState(false);
-    const [deviseHistoryLine, setDeviseHistoryLine] = useState([]);
-    const [historyParams, setHistoryParams] = useState({
-        fromDate: "",
-        toDate: "",
-        deviceId: "",
-    });
-    const [shortStops, setShortStops] = useState([]);
-    const [longStops, setLongStops] = useState([]);
-    const [hoveredStop, setHoveredStop] = useState(null);
-
-
-    const onChangeDateFrom = (e, a) => {
-        setHistoryParams({...historyParams, fromDate: a});
-    };
-
-    const onChangeDateTo = (e, a) => {
-        setHistoryParams({...historyParams, toDate: a});
-    };
-
-    const clear = () => {
-        setShowHistoryBtn(false);
-        setDeviseHistoryLine([]);
-
-        getSingleData(historyParams?.deviceId);
-
-        setHistoryParams({
-            ...historyParams,
-            fromDate: "",
-            toDate: "",
-        })
-
-    };
-
-
-    const getHistoryData = () => {
-        setLoading(true);
-        axios.get(`${ip}/api/log-data-history`,
-            {
-                params: historyParams,
-                headers: {'x-access-token': localStorage.getItem('gps-x-access-token')}
-            })
-            .then(res => {
-                const {data} = res.data;
-
-
-                setShortStops(res?.data?.short_stops || []);
-                setLongStops(res?.data?.long_stops || []);
-
-
-                setDeviseHistoryLine(data);
-
-
-                onClose();
-                setLoading(false);
-
-                const distance = res?.data?.distance;
-                setClickedMarker(prev => {
-                    if (!prev || typeof prev !== 'object') {
-                        return {distance};
-                    }
-                    return {...prev, distance};
-                });
-
-            })
-            .catch(err => {
-                console.log(err?.response?.data);
-                setLoading(false);
-            })
-    }
-    const onChangeType = (type) => {
-        setFilterTransport({
-            ...filterTransPort,
-            searched_data: "",
-            filter: [],
-            type: type,
-            status: 'all'
-        });
-        setValueRadio('all')
-        setCheckedList([]);
-        setClickedMarker({});
-        backInfo();
-    };
-
-    const onChange = (list) => {
-        const isChecked = checkedList.some((item) => item === list.display_name);
-        if (isChecked) {
-            const filterChecked = checkedList.filter(
-                (item) => item !== list.display_name
-            );
-            setCheckedList(filterChecked);
-        } else {
-            setCheckedList((prev) => [...prev, list.display_name]);
-        }
-    };
-    const onSearched = () => {
-
-        // filter ni set qilamiz
-        setFilterTransport({
-            filter: checkedList,
-            type: filterTransPort?.type
-        });
-
-        onClose();
-        setDeviseHistoryLine([]);
-        setTransportInfo(true);
-
-        // 🔥 MARKAZLASH FAQAT SHU YERDA
-        if (checkedList.length > 0 && markers.length > 0) {
-
-            const firstSelectedName = checkedList[0];
-
-            const selectedMarker = markers.find(
-                (m) => m.display_name === firstSelectedName
-            );
-
-            if (selectedMarker?.coordinate?.length === 2) {
-                setMapCenter({
-                    lat: selectedMarker.coordinate[0],
-                    lng: selectedMarker.coordinate[1],
-                });
-            }
-        }
-    };
-
-
-    const backInfo = () => {
-        setSelectedCar(null)
-        setTransportInfo(true);
-        setClickedMarker({});
-        setDeviseHistoryLine([]);
-        setHistoryParams({
-            fromDate: "",
-            toDate: "",
-            deviceId: "",
-        })
-
-        setLongStops([]);
-        setShortStops([]);
-    }
-
-    const clearCheckbox = () => {
-        onClose();
-        setValueRadio('all');
-        setFilterTransport({
-            filter: [],
-            type: filterTransPort?.type,
-            status: 'all',
-            searched_data: "" // 🔥 MUHIM
-        });
-        setCheckedList([]);
-        setClickedMarker({});
-        setDeviseHistoryLine([]);
-
-        setSearchText(""); // 🔥 input bo‘shaydi
-        shouldCenterAfterSearch.current = false; // 🔥 MUHIM
-    }
-
-    const [open, setOpen] = useState(false);
-    const [placement, setPlacement] = useState("bottom");
-    const showDrawer = () => {
-        setOpen(true);
-    };
-    const onClose = () => {
-        setOpen(false);
-        // setCheckedList([]);
-        // getGPSData(filterTransPort);
-    };
-
-
-    const [width, setWidth] = useState(window.innerWidth);
+    const tiles = tileLayers(theme, {satellite});
+    const lineCasing = casingColor(theme, {satellite});
 
     useEffect(() => {
-        const handleResize = () => setWidth(window.innerWidth);
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
+        const onResize = () => setIsMobile(window.innerWidth <= MOBILE_MAX);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
     }, []);
 
-    const onTransportInfoChange = () => {
-        setTransportInfo(false);
-        if (width <= 576) {
-            showDrawer();
+    const handleAuthError = useCallback((err) => {
+        if (err?.response?.status === 401) {
+            dispatch(LoginFailure());
+            return true;
         }
-    };
+        return false;
+    }, [dispatch]);
 
-    const getSingleData = (id) => {
-        setLoading(true);
-        axios.get(`${ip}/api/events/${id}`,
-            {headers: {'x-access-token': localStorage.getItem('gps-x-access-token')}}
-        )
-            .then((res) => {
-                const {data} = res?.data;
-
-                setShortStops(res?.data?.data[0]?.short_stops || []);
-                setLongStops(res?.data?.data[0]?.long_stops || []);
-
-                data?.map((item) => {
-                    setClickedMarker(item);
-                });
-
-                setShowHistoryBtn(false);
-                setDeviseHistoryLine([]);
-
-
-                setLoading(false);
-            })
-            .catch((err) => {
-                message.error(err?.response?.data?.msg);
-                setLoading(false);
-            });
-    };
-
-    // car anim
-
-// new code
-
+    /* ---------------- vehicles (live polling) ---------------- */
     const [markers, setMarkers] = useState([]);
-    const [total, setTotal] = useState('');
-    const [activeCount, setActiveCount] = useState('')
+    const [trails, setTrails] = useState({});
+    const [firstLoad, setFirstLoad] = useState(true);
+    const [total, setTotal] = useState(0);
+    const [activeCount, setActiveCount] = useState(0);
+    const markersRef = useRef(markers);
+    markersRef.current = markers;
+    const trailsRef = useRef(trails);
+    trailsRef.current = trails;
+    const headRefs = useRef({});   // device_id -> iz oxiridan belgigacha chiziq (Leaflet Polyline)
+    const headPos = useRef({});    // device_id -> belgining hozirgi (animatsiyadagi) o'rni
+    const onVehicleMove = useCallback((id, pos) => {
+        headPos.current[id] = pos;
+        const line = headRefs.current[id];
+        const track = trailsRef.current[id];
+        if (line && track?.length) line.setLatLngs([track[track.length - 1].p, pos]);
+    }, []);
+    const fitPendingRef = useRef(true);
 
-    // input orqali qidirganda markazga birinchi topilganni chiqarish
-    const shouldCenterAfterSearch = useRef(false);
-    const [searchText, setSearchText] = useState("");
+    useEffect(() => {
+        let cancelled = false;
+        let timer = null;
+        let controller = null;
+        const trailTimers = new Set();
 
-
-    const getGPSData = async () => {
-        try {
-            const {data} = await api({
-                url: "/api/events",
-                method: "post",
-                // data: {type: "car", searched_data: "", filter: []},
-                data: filterTransPort,
-            });
-            setTotal(data?.count);
-            setActiveCount(data?.active_count);
-            // Hammasini ko'rsatish va optimizatsiya
-            setMarkers((prevMarkers) => {
-                const newMarkers = data.data.map((newCar) => {
-                    const existingCar = prevMarkers.find(
-                        (prevCar) => prevCar.device_id === newCar.device_id
-                    );
-                    if (
-                        existingCar &&
-                        existingCar.coordinate[0] === newCar.coordinate[0] &&
-                        existingCar.coordinate[1] === newCar.coordinate[1] &&
-                        existingCar.angle === newCar.angle
-                    ) {
-                        return existingCar; // O'zgarmagan holatda eskisini qaytaradi
-                    }
-
-                    return newCar; // Yangisini qaytaradi
-                });
-
-
-                // 🔥 AGAR SEARCH BO'LGAN BO'LSA
-                if (shouldCenterAfterSearch.current && newMarkers.length > 0) {
-
-                    const first = newMarkers[0];
-
-                    if (first.coordinate?.length === 2) {
-                        setMapCenter({
-                            lat: first.coordinate[0],
-                            lng: first.coordinate[1],
-                        });
-                    }
-
-                    shouldCenterAfterSearch.current = false; // bir marta ishlaydi
+        // keyingi so'rov oldingisi tugagandan keyin ketadi; filtr o'zgarsa eskisi bekor qilinadi
+        const tick = async () => {
+            if (document.hidden) {
+                timer = setTimeout(tick, POLL_MS);
+                return;
+            }
+            controller = new AbortController();
+            try {
+                const {data} = await api({url: "/api/events", method: "post", data: filterTransPort, signal: controller.signal});
+                if (cancelled) return;
+                const list = Array.isArray(data?.data) ? data.data.filter(m => isValidPoint(toPoint(m.coordinate))) : [];
+                setMarkers(prev => mergeMarkers(prev, list));
+                const unfiltered = (filterTransPort.status || 'all') === 'all'
+                    && !filterTransPort.searched_data && !filterTransPort.filter?.length;
+                if (unfiltered) {
+                    setTotal(+data?.count || list.length);
+                    setActiveCount(+data?.active_count || list.filter(v => v.active).length);
                 }
 
+                // Har transportning yurgan izi. GPS titrashi (JITTER_M dan kichik) va
+                // aloqa uzilishidan keyingi sakrashlar izga qo'shilmaydi.
+                // Belgi yangi nuqtaga silliq (POLL_MS ichida) yetib boradi — iz ham shu payt uzayadi,
+                // aks holda chiziq belgidan oldinga o'tib ketadi.
+                // Animatsiya render'dan keyin boshlanadi — kichik zaxira bilan nuqta belgi o'tib bo'lgach qo'shiladi.
+                const trailTimer = setTimeout(() => {
+                    trailTimers.delete(trailTimer);
+                    if (!cancelled) setTrails(prev => {
+                        const updated = {...prev};
+                        list.forEach(v => {
+                            const point = toPoint(v.coordinate);
+                            const track = updated[v.device_id] || [];
+                            const last = track[track.length - 1];
+                            const next = {p: point, s: v.speed || 0};
+                            if (last) {
+                                const moved = distance(last.p, point);
+                                if (moved < JITTER_M) return;
+                                if (moved > TELEPORT_M) {
+                                    updated[v.device_id] = [next];
+                                    return;
+                                }
+                            }
+                            updated[v.device_id] = [...track, next].slice(-TRAIL_LENGTH);
+                        });
+                        return updated;
+                    });
+                }, POLL_MS + TRAIL_LAG_MS);
+                trailTimers.add(trailTimer);
+            } catch (err) {
+                if (cancelled || axios.isCancel(err)) return;
+                handleAuthError(err);
+            } finally {
+                if (!cancelled) {
+                    setFirstLoad(false);
+                    timer = setTimeout(tick, POLL_MS);
+                }
+            }
+        };
 
-                return newMarkers; // Faqat active bo'lishidan qat'i nazar hammasini qaytaradi
-            });
-        } catch (error) {
-            console.error("GPS data fetch error:", error);
-        }
+        tick();
+        const onVisible = () => {
+            if (!document.hidden) {
+                clearTimeout(timer);
+                tick();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+            trailTimers.forEach(clearTimeout);
+            controller?.abort();
+            document.removeEventListener('visibilitychange', onVisible);
+        };
+    }, [filterTransPort, handleAuthError]);
+
+    /* ---------------- search / filters ---------------- */
+    const [searchText, setSearchText] = useState(filterTransPort.searched_data || '');
+    const [checkedList, setCheckedList] = useState([]);
+    const statusFilter = filterTransPort.status || 'all';
+
+    useEffect(() => {
+        const id = setTimeout(() => {
+            if ((filterTransPort.searched_data || '') === searchText) return;
+            fitPendingRef.current = true;
+            setFilterTransport(prev => ({...prev, searched_data: searchText}));
+        }, SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(id);
+    }, [searchText, filterTransPort.searched_data, setFilterTransport]);
+
+    const onChangeStatus = (status) => {
+        if (status === statusFilter) return;
+        fitPendingRef.current = true;
+        setFilterTransport(prev => ({...prev, status}));
     };
 
+    const toggleChecked = (name) =>
+        setCheckedList(list => (list.includes(name) ? list.filter(n => n !== name) : [...list, name]));
 
-    useEffect(() => {
-        getGPSData();
-        // Intervalga debounce qo'shamiz
-        const intervalId = setInterval(getGPSData, 3000);
-        return () => clearInterval(intervalId);
-    }, [filterTransPort]);
-
-
-    // dastlab kirilganda birinchi markerni markazda chiqarish
-    const isFirstLoad = useRef(true);
-    useEffect(() => {
-        if (isFirstLoad.current && markers.length > 0) {
-            const firstMarker = markers[0];
-
-            if (firstMarker?.coordinate?.length === 2) {
-                setMapCenter({
-                    lat: firstMarker.coordinate[0],
-                    lng: firstMarker.coordinate[1],
-                });
-                isFirstLoad.current = false; // keyingi update larda ishlamaydi
-            }
+    /* ---------------- map helpers ---------------- */
+    /* overPlayer — pastda tarix pleyeri chiqadi: yo'l uning va o'ngdagi tugmalar ostida qolmasin */
+    const fitTo = useCallback((points, maxZoom = FOLLOW_ZOOM, {overPlayer = false} = {}) => {
+        const map = mapRef.current;
+        const valid = points.filter(isValidPoint);
+        if (!map || !valid.length) return;
+        if (valid.length === 1) {
+            map.setView(valid[0], Math.max(map.getZoom(), maxZoom), {animate: true});
+            return;
         }
-    }, [markers]);
-
-
-    const collapseItems = useMemo(() => [
-        {
-            key: '2',
-            label: t("Transport holati"),
-            children: (
-                <>
-                    <div className="transprt_info_inner">
-                        <div className="transprt_info_item">{t("Tezlik")}:</div>
-                        <div className="transprt_info_item2">{clickedMarker?.speed} {t("km/soat")}</div>
-                    </div>
-
-                    <div className="transprt_info_inner">
-                        <div className="transprt_info_item">{t("Bosib o'tgan masofasi")}</div>
-                        <div className="transprt_info_item2">
-                            {`${clickedMarker.distance} ${t("km")}`}
-                        </div>
-                    </div>
-
-                    <div className="transprt_info_inner">
-                        <div className="transprt_info_item">{t("Qisqa to'xtash")}</div>
-                        <div className="transprt_info_item2">
-                            {shortStops?.length > 0 ? `${shortStops.length} ${t("ta")}` : 0}
-                        </div>
-                    </div>
-                    <div className="transprt_info_inner">
-                        <div className="transprt_info_item">{t("Uzoq to'xtash")}</div>
-                        <div className="transprt_info_item2">
-                            {longStops?.length > 0 ? `${longStops.length} ${t("ta")}` : 0}
-                        </div>
-                    </div>
-
-                    {/*<div className="transprt_info_inner">*/}
-                    {/*    <div className="transprt_info_item">{t("Dvigatel holati")}:</div>*/}
-                    {/*    <div className="transprt_info_item2">*/}
-                    {/*        {clickedMarker?.ignition === 1 ? t("yoniq") : t("o'chiq")}*/}
-                    {/*    </div>*/}
-                    {/*</div>*/}
-
-
-                    <div className="transprt_info_inner">
-                        <div className="transprt_info_item">
-                            {t("Vaqt")}:
-                        </div>
-                        <div className="transprt_info_item2">
-                            {moment(clickedMarker?.updated_time).format('DD.MM.YYYY HH:mm:ss')}
-                        </div>
-                    </div>
-                </>
-            ),
+        if (!overPlayer) {
+            map.fitBounds(L.latLngBounds(valid), {padding: [48, 48], maxZoom});
+            return;
         }
-    ], [clickedMarker, i18n.language]); // <-- clickedMarker o'zgarganda qayta yaratiladi
-
-
-// new code
-
-    const {isLoaded} = useLoadScript({
-        googleMapsApiKey: "AIzaSyCj4Nh4DGBTx6dFCMSPHSKtTLoIFcdyIww",
-    });
-
-    const [map, setMap] = useState(null);
-
-    const onLoad = useCallback((map) => {
-        setMap(map);
+        const mobile = window.innerWidth <= MOBILE_MAX;
+        map.fitBounds(L.latLngBounds(valid), {
+            paddingTopLeft: [mobile ? 24 : 48, mobile ? 32 : 48],
+            paddingBottomRight: [mobile ? 72 : 80, mobile ? 200 : 140],
+            maxZoom,
+        });
     }, []);
 
-    if (!isLoaded) return <div>Loading...</div>;
+    useEffect(() => {
+        if (!fitPendingRef.current || !mapReady || !markers.length) return;
+        fitPendingRef.current = false;
+        fitTo(markers.map(m => toPoint(m.coordinate)));
+    }, [markers, mapReady, fitTo]);
 
-
-    const refreshFunction = () => {
-        if (!historyParams?.deviceId) return;
-
-        clear();
+    const zoomBy = (step) => {
+        const map = mapRef.current;
+        if (map) map.setZoom(Math.min(Math.max(map.getZoom() + step, 3), MAX_ZOOM));
     };
 
+    const toggleFullscreen = () => {
+        const node = mapWrapRef.current;
+        if (!node) return;
+        if (document.fullscreenElement) document.exitFullscreen?.();
+        else node.requestFullscreen?.();
+        // Leaflet o'lchamni o'zi qayta hisoblamaydi
+        setTimeout(() => mapRef.current?.invalidateSize(), 250);
+    };
+
+    /* ---------------- selected vehicle ---------------- */
+    const [selectedId, setSelectedId] = useState(null);
+    const [detail, setDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [stops, setStops] = useState({short: [], long: []});
+    const [history, setHistory] = useState(null); // {line, distance, range}
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [playIndex, setPlayIndex] = useState(0);
+    const [hoveredLine, setHoveredLine] = useState(null);
+    const detailReqRef = useRef(0);
+    const historyRef = useRef(history);
+    historyRef.current = history;
+
+    const liveVehicle = useMemo(
+        () => markers.find(m => m.device_id === selectedId) || null,
+        [markers, selectedId]
+    );
+
+    const loadDetail = useCallback((id, {silent = false} = {}) => {
+        if (!id) return;
+        const req = ++detailReqRef.current;
+        if (!silent) setDetailLoading(true);
+        axios.get(`${ip}/api/events/${id}`, {headers: authHeaders()})
+            .then(res => {
+                if (req !== detailReqRef.current) return; // yangiroq so'rov bor
+                const item = res?.data?.data?.[0] || null;
+                setDetail(item);
+                if (!historyRef.current) setStops({short: item?.short_stops || [], long: item?.long_stops || []});
+            })
+            .catch(err => {
+                if (req !== detailReqRef.current || handleAuthError(err)) return;
+                if (!silent) message.error(err?.response?.data?.msg || t('Xatolik yuz berdi'));
+            })
+            .finally(() => {
+                if (req === detailReqRef.current) setDetailLoading(false);
+            });
+    }, [handleAuthError, t]);
+
+    const onSelectVehicle = useCallback((id) => {
+        setSelectedId(id);
+        setDetail(null);
+        setHistory(null);
+        setPlayIndex(0);
+        setStops({short: [], long: []});
+        loadDetail(id);
+        const m = markersRef.current.find(x => x.device_id === id);
+        if (m && mapRef.current) {
+            mapRef.current.setView(toPoint(m.coordinate), Math.max(mapRef.current.getZoom(), FOLLOW_ZOOM), {animate: true});
+        }
+        if (window.innerWidth <= MOBILE_MAX) setDrawerOpen(true);
+    }, [loadDetail]);
+
+    const backToList = () => {
+        detailReqRef.current++;
+        setSelectedId(null);
+        setDetail(null);
+        setHistory(null);
+        setPlayIndex(0);
+        setStops({short: [], long: []});
+        setDetailLoading(false);
+    };
+
+    // Kuzatib borish: tanlangan transport yangi joyga o'tsa, xarita ergashadi
+    useEffect(() => {
+        if (!followSelected || !liveVehicle || history || !mapRef.current) return;
+        mapRef.current.panTo(toPoint(liveVehicle.coordinate), {animate: true, duration: 0.4});
+    }, [followSelected, liveVehicle, history]);
+
+    // Jonli kuzatishda tafsilotlar fonda yangilanib turadi
+    useEffect(() => {
+        if (!selectedId || history) return undefined;
+        const id = setInterval(() => !document.hidden && loadDetail(selectedId, {silent: true}), DETAIL_REFRESH_MS);
+        return () => clearInterval(id);
+    }, [selectedId, history, loadDetail]);
+
+    const applySearch = () => {
+        fitPendingRef.current = true;
+        setFilterTransport(prev => ({...prev, filter: checkedList}));
+        backToList();
+        if (isMobile) setDrawerOpen(false);
+    };
+
+    const resetFilters = () => {
+        fitPendingRef.current = true;
+        setSearchText('');
+        setCheckedList([]);
+        setFilterTransport(prev => ({...prev, filter: [], status: 'all', searched_data: ''}));
+        backToList();
+    };
+
+    const loadHistory = async (fromDate, toDate) => {
+        setHistoryLoading(true);
+        try {
+            const res = await axios.get(`${ip}/api/log-data-history`, {
+                params: {deviceId: selectedId, fromDate, toDate},
+                headers: authHeaders(),
+            });
+            const line = (res?.data?.data || []).map(toPoint).filter(isValidPoint);
+            setHistory({line, distance: res?.data?.distance, range: [fromDate, toDate]});
+            setPlayIndex(0);
+            setStops({short: res?.data?.short_stops || [], long: res?.data?.long_stops || []});
+            // bo'sh natija xabari chap panelda ko'rsatiladi
+            if (line.length) {
+                // telefonda panel yopiladi — yo'l xaritada darhol ko'rinadi
+                if (isMobile) setDrawerOpen(false);
+                fitTo(line, FOLLOW_ZOOM, {overPlayer: true});
+            }
+            return true;
+        } catch (err) {
+            if (!handleAuthError(err)) message.error(err?.response?.data?.msg || t('Xatolik yuz berdi'));
+            return false;
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const cancelHistory = () => {
+        setHistory(null);
+        setPlayIndex(0);
+        setHoveredLine(null);
+        setStops({short: detail?.short_stops || [], long: detail?.long_stops || []});
+        if (liveVehicle) mapRef.current?.panTo(toPoint(liveVehicle.coordinate));
+    };
+
+    /* ---------------- render ---------------- */
+    const liveRoute = useMemo(
+        () => (!history && Array.isArray(detail?.route) ? detail.route.map(toPoint).filter(isValidPoint) : []),
+        [detail, history]
+    );
+
+    const allStops = [
+        ...stops.short.map(s => ({...s, kind: 'short'})),
+        ...stops.long.map(s => ({...s, kind: 'long'})),
+    ].filter(s => isValidPoint(toPoint(s.coordinate)));
+
+    /* Chiziq ustida sichqoncha yurganda bosib o'tilgan masofa ko'rsatiladi */
+    const lineHandlers = useMemo(() => ({
+        mousemove: (e) => setHoveredLine([e.latlng.lat, e.latlng.lng]),
+        mouseout: () => setHoveredLine(null),
+    }), []);
+
+    const shownDistance = history ? history.distance : detail?.distance;
+
+    const inactiveCount = Math.max(0, total - activeCount);
+    const pinned = filterTransPort.filter || [];
+    const hasFilters = !!searchText || statusFilter !== 'all' || pinned.length > 0;
+    const now = Date.now();
+
+    const listPanel = (
+        <div className="mp-panel">
+            <div className="ls-head">
+                <div className="ls-title">
+                    <div>
+                        <h2>{t("Transportlar")}</h2>
+                        <span className="ls-live"><i/>{t("Jonli kuzatuv")}</span>
+                    </div>
+                    <span className="ls-count">{markers.length}</span>
+                </div>
+
+                <div className="ls-stats" role="tablist" aria-label={t('Filtr')}>
+                    {[
+                        {key: 'all', label: t('Barchasi'), value: total},
+                        {key: 'active', label: t('Faol'), value: activeCount},
+                        {key: 'inactive', label: t('Nofaol'), value: inactiveCount},
+                    ].map(s => (
+                        <button
+                            key={s.key}
+                            type="button"
+                            role="tab"
+                            aria-selected={statusFilter === s.key}
+                            className={cx('ls-stat', `is-${s.key}`, statusFilter === s.key && 'is-selected')}
+                            onClick={() => onChangeStatus(s.key)}
+                        >
+                            <span className="ls-stat__label">{s.key !== 'all' && <i/>}{s.label}</span>
+                            <strong>{s.value}</strong>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="ls-search">
+                    <SearchInput
+                        value={searchText}
+                        placeholder={t("Raqam yoki nom bo'yicha izlash")}
+                        onChange={(e) => setSearchText(e.currentTarget.value)}
+                    />
+                    {searchText && (
+                        <button type="button" className="ls-search__clear" onClick={() => setSearchText('')}
+                                aria-label={t('Tozalash')}>
+                            <CloseIcon size={14}/>
+                        </button>
+                    )}
+                </div>
+
+                {pinned.length > 0 && (
+                    <div className="ls-pinned">
+                        <span>{t("Faqat tanlangan {{n}} ta transport", {n: pinned.length})}</span>
+                        <button type="button" onClick={() => {
+                            fitPendingRef.current = true;
+                            setFilterTransport(prev => ({...prev, filter: []}));
+                        }}>
+                            {t('Hammasi')}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            <div className="mp-panel__list ls-list">
+                {firstLoad ? (
+                    Array.from({length: 6}).map((_, i) => <div key={i} className="ls-skeleton"/>)
+                ) : markers.length === 0 ? (
+                    <EmptyState
+                        title={t("Transport topilmadi")}
+                        icon={<MapIcon size={26}/>}
+                        action={hasFilters && (
+                            <Button variant="secondary-gray" size="sm" onClick={resetFilters}>
+                                {t('Filtrlarni tozalash')}
+                            </Button>
+                        )}
+                    />
+                ) : (
+                    markers.map(item => {
+                        const checked = checkedList.includes(item.display_name);
+                        const moving = item.active && item.speed > 0;
+                        return (
+                            <div
+                                key={item.device_id}
+                                className={cx(
+                                    'ls-row',
+                                    selectedId === item.device_id && 'is-selected',
+                                    checked && 'is-checked',
+                                    checkedList.length > 0 && 'is-selecting'
+                                )}
+                            >
+                                <button type="button" className="ls-row__main" onClick={() => onSelectVehicle(item.device_id)}>
+                                    <span className={cx('ls-row__icon', item.active && 'is-active')}>
+                                        <img src={vehicleIcon(item.type, item.active)} alt=""/>
+                                        <i className="ls-row__dot"/>
+                                    </span>
+                                    <span className="ls-row__text">
+                                        <span className="ls-row__name">{item.display_name}</span>
+                                        <span className="ls-row__sub">
+                                            {t(vehicleLabelKey(item.type))}
+                                            {item.date_time && <> · {relativeTime(item.date_time, t, now)}</>}
+                                        </span>
+                                    </span>
+                                    {moving ? (
+                                        <span className="ls-row__speed">
+                                            {Math.round(item.speed)}<small>{t('km/soat')}</small>
+                                        </span>
+                                    ) : (
+                                        <span className={cx('ls-row__state', item.active && 'is-active')}>
+                                            {item.active ? t("To'xtagan") : t('Nofaol')}
+                                        </span>
+                                    )}
+                                </button>
+                                <span className="ls-row__check">
+                                    <Checkbox
+                                        checked={checked}
+                                        onChange={() => toggleChecked(item.display_name)}
+                                        aria-label={item.display_name}
+                                    />
+                                </span>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {checkedList.length > 0 && (
+                <div className="ls-selection" role="region" aria-live="polite">
+                    <span className="ls-selection__count">{checkedList.length}</span>
+                    <span className="ls-selection__text">
+                        <b>{t("{{n}} ta tanlandi", {n: checkedList.length})}</b>
+                        <small>{t('Xaritada faqat shular')}</small>
+                    </span>
+                    <Button variant="secondary-gray" size="sm" iconOnly iconLeading={<CloseIcon size={16}/>}
+                            className="ls-selection__cancel"
+                            onClick={() => setCheckedList([])} aria-label={t('Bekor qilish')} title={t('Bekor qilish')}/>
+                    <Button size="sm" iconLeading={<MapIcon size={16}/>} onClick={applySearch}>
+                        {t("Ko'rsatish")}
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+
+    const panelContent = selectedId ? (
+        <VehicleDetail
+            key={selectedId}
+            detail={detail}
+            live={liveVehicle}
+            stops={stops}
+            history={history}
+            historyLoading={historyLoading}
+            onBack={backToList}
+            onRefresh={() => (history ? cancelHistory() : loadDetail(selectedId))}
+            onLocate={() => liveVehicle && fitTo([toPoint(liveVehicle.coordinate)], FOLLOW_ZOOM)}
+            onLoadHistory={loadHistory}
+            onCancelHistory={cancelHistory}
+        />
+    ) : listPanel;
 
     return (
-        <div className="">
-            {
-                loading && <Loader/>
-            }
-            <div className="transports">
+        <ConfigProvider theme={antdTheme}>
+            <div className="mp">
+                {!isMobile && <aside className="mp-aside">{panelContent}</aside>}
 
-                {/*<div onClick={() => onChangeType("train")}*/}
-                {/*     className={`${*/}
-                {/*         filterTransPort.type === "train"*/}
-                {/*             ? "transports_inner transports_inner_active"*/}
-                {/*             : "transports_inner"*/}
-                {/*     }`}*/}
-                {/*>*/}
-                {/*    <div className="transports_inner_items">*/}
-                {/*        <img src={teplavozIcon} alt=""/>*/}
-                {/*        {t("Teplavoz")}*/}
-                {/*    </div>*/}
-                {/*    <div*/}
-                {/*        className={`${*/}
-                {/*            filterTransPort.type === "train" ? "active_line" : ""*/}
-                {/*        }`}*/}
-                {/*    ></div>*/}
-                {/*</div>*/}
+                <div className="mp-map" ref={mapWrapRef}>
+                    <PanelLoader show={detailLoading || historyLoading}/>
 
-
-                <h2 style={{marginLeft: "16px"}}>{t("Transportlar")}</h2>
-
-            </div>
-            <div className="transprts_map">
-                <div className="transprts_map_desctop">
-                    {transportInfo ? (
-                        <div className="transprts_map_left">
-                            <div className="transprts_top">
-                                <div className="transprts_title_search">
-                                    <div className="transprts_title">
-                                        <div className="transprts_title_line"></div>
-                                        {/*{t("Teplavoz")}*/}
-                                        {t("Transportlar")}
-                                    </div>
-                                </div>
-                                {/*<hr/>*/}
-
-                                <div className="transprts_search">
-                                    <div className="filter_input">
-                                        {/*<IoSearch size={24}/>*/}
-                                        <img src={searchIconNew}/>
-                                        {/*<input*/}
-                                        {/*    onChange={(e) => {*/}
-                                        {/*        setFilterTransport({*/}
-                                        {/*            ...filterTransPort,*/}
-                                        {/*            searched_data: e.currentTarget.value,*/}
-                                        {/*        });*/}
-                                        {/*    }}*/}
-                                        {/*    placeholder={t("Izlash")}*/}
-                                        {/*/>*/}
-
-                                        {/*new logik*/}
-                                        <input
-                                            value={searchText}
-                                            onChange={(e) => {
-                                                const value = e.currentTarget.value;
-
-                                                setSearchText(value); // inputni boshqaradi
-
-                                                shouldCenterAfterSearch.current = true;
-
-                                                setFilterTransport({
-                                                    ...filterTransPort,
-                                                    searched_data: value,
-                                                });
-                                            }}
-                                            placeholder={t("Izlash")}
-                                        />
-
-                                    </div>
-                                    <Popover
-                                        open={openFilterPop}
-                                        onOpenChange={handleOpenChangePopover}
-                                        content={(
-                                            <div className="transprts_search_filter_popover">
-                                                <Radio.Group
-                                                    style={{display: 'flex', flexDirection: 'column', gap: 8}}
-                                                    onChange={onChangeRadio}
-                                                    value={valueRadio}
-                                                    options={[
-                                                        {
-                                                            value: "all",
-                                                            label: t("Barchasi"),
-                                                        },
-                                                        {
-                                                            value: "active",
-                                                            label: t("Faol"),
-                                                        },
-                                                        {
-                                                            value: "inactive",
-                                                            label: t("Nofaol"),
-                                                        },
-                                                    ]}
-                                                />
-                                            </div>
-                                        )} placement="bottom">
-                                        <div className="transprts_search_filter">
-                                            <img src={filterImg}/>
-                                        </div>
-                                    </Popover>
-                                </div>
-
-                                <div className="transprts_list">
-                                    {markers?.map((item, index) => {
-                                        const isChecked = checkedList.some(
-                                            (check) => check === item.display_name
-                                        );
-                                        return (
-                                            <div className="transprts_items" key={index}>
-                                                {item.display_name}
-                                                <span>
-                          <Checkbox
-                              checked={isChecked}
-                              onChange={() => onChange(item)}
-                              type="checkbox"
-                          />
-                        </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="transprts_total_search">
-                                {/*<hr/>*/}
-                                <div className="transprts_total">
-                                    <p>{t("Jami")} : {total}</p>
-                                    {/*<p>{t("Faollar")} : {activeCount}</p>*/}
-                                </div>
-
-                                <div className="transprts_total_search_buttons">
-                                    <div onClick={clearCheckbox} className="save_button">
-                                        <button className="cansle_button">{t("Tozalash")}</button>
-                                    </div>
-                                    <div onClick={onSearched} className="save_button">
-                                        <button className="add_button">{t("Qidirish")}</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="transprts_info">
-                            <div className="transprt_info_title">
-                                <span onClick={backInfo}><GrLinkPrevious/>{t("Batafsil")}</span>
-                                <button className="add_button" style={{width: '40px', padding: 0}}
-                                        onClick={refreshFunction}
-                                >
-                                    <IoMdRefresh style={{fontSize: '20px'}}/>
-                                </button>
-                            </div>
-                            <Collapse items={[{
-                                key: '1', label: t("Transport haqida ma’lumot"),
-                                children:
-                                    <>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Maxsus raqami")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.display_name}</div>
-                                        </div>
-                                        {/*<div className="underline"></div>*/}
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Izoh")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.description}</div>
-                                        </div>
-                                        {/*<div className="underline"></div>*/}
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Turi")}:
-                                            </div>
-                                            <div className="transprt_info_item2">
-                                                {
-                                                    clickedMarker?.type == 'train' ? t("Teplavoz") :
-                                                        clickedMarker?.type == 'truck' ? t("Og'ir avtomobil") :
-                                                            clickedMarker?.type == 'bus' ? t("Avtobus") :
-                                                                clickedMarker?.type == 'car' ? t("Yengil avtomobil") :
-                                                                    clickedMarker?.type == 'ladder' ? t("Trap") :
-                                                                        clickedMarker?.type == 'tractor' ? t("Tractor") :
-                                                                            clickedMarker?.type == 'reloaded' ? t("Autolift") :
-                                                                                clickedMarker?.type == 'tz' ? t("tz") :
-                                                                                    clickedMarker?.type == 'firetruck' ? t("firetruck") :
-                                                                                        clickedMarker?.type == 'specialcar' ? t("specialcar") :
-                                                                                            clickedMarker?.type == 'lenta' ? t("lenta") :
-                                                                                                clickedMarker?.type == 'ibp' ? t("IBP") : ''
-                                                }
-                                            </div>
-                                        </div>
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Markasi va modeli")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.vehicle_model}</div>
-                                        </div>
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Ishlab chiqarilgan yili")}:
-                                            </div>
-                                            <div
-                                                className="transprt_info_item2">{clickedMarker?.vehicle_manufactured_year}</div>
-                                        </div>
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Egasi")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.vehicle_driver}</div>*/}
-                                        {/*</div>*/}
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Boshqarma")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div*/}
-                                        {/*        className="transprt_info_item2">{clickedMarker?.vehicle_department}</div>*/}
-                                        {/*</div>*/}
-
-                                    </>
-                            }]}/>
-
-                            <Collapse defaultActiveKey={['2']} items={collapseItems}/>
-
-                            <Collapse items={[{
-                                key: '3', label: t("Yoqilg'i haqida ma'lumot"),
-                                children:
-                                    <>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Mavjud yoqilg'i")} :
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.fuel_level > 0 ?
-                                                `${clickedMarker?.fuel_level} l` : "-"}
-                                            </div>
-                                        </div>
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Mavjud yoqilg'i")}{t("(%)")} :*/}
-                                        {/*    </div>*/}
-                                        {/*    <div*/}
-                                        {/*        className="transprt_info_item2">{!clickedMarker.fuel_level_percentage ? "-" :*/}
-                                        {/*        <div>{clickedMarker.fuel_level_percentage} %</div>}</div>*/}
-                                        {/*</div>*/}
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Yoqilg'i sarfi")} (100km):*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.fuel_rate} l</div>*/}
-                                        {/*</div>*/}
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Yoqilg'i quyilgan vaqt")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div*/}
-                                        {/*        className="transprt_info_item2">{clickedMarker?.last_refuel_time == null ? "" : moment(clickedMarker.last_refuel_time).format('DD.MM.YYYY, HH:mm')}</div>*/}
-                                        {/*</div>*/}
-                                    </>
-                            }]}/>
-                            <Collapse items={[{
-                                key: '4', label: t("GPS haqida ma'lumot"),
-                                children:
-                                    <>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("IMEI")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.device_id}</div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                GSM {t("Signal")}:
-                                            </div>
-                                            <div className="transprt_info_item2">
-                                                {clickedMarker?.gsm_signal === 0 ? t("Tarmoq yo'q") :
-                                                    clickedMarker?.gsm_signal === 1 ? t("Juda zaif") :
-                                                        clickedMarker?.gsm_signal === 2 ? t("Zaif") :
-                                                            clickedMarker?.gsm_signal === 3 ? t("O'rtacha") :
-                                                                clickedMarker?.gsm_signal === 4 ? t("Yaxshi") :
-                                                                    clickedMarker?.gsm_signal === 5 ? t("A'lo") :
-                                                                        "Noto'g'ri signal"
-
-                                                }
-                                            </div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Battery Level")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.battery_level} %</div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Model")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.model}</div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("GPS o'rnatilgan sana")}:
-                                            </div>
-                                            <div className="transprt_info_item2">
-                                                {clickedMarker?.created_time ? moment(clickedMarker?.created_time).format('DD.MM.YYYY , HH:mm') : ""}
-                                            </div>
-                                        </div>
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Analog Input 1")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.analog_input1}</div>*/}
-                                        {/*</div>*/}
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Analog Input 2")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.analog_input2}</div>*/}
-                                        {/*</div>*/}
-                                    </>
-                            }]}/>
-                            <div className="transprt_info_inner_view">
-                                <div className="transprt_info_item">
-                                    {t("Tarix")}:
-                                </div>
-                                <button onClick={() => setShowHistoryBtn(!showHistoryBtn)} className="view_button">
-                                    {
-                                        showHistoryBtn ? t("Bekor qilish") : t("Ko'rish")
-                                    }
-                                </button>
-                            </div>
-                            <div className="underline"></div>
-
-                            {showHistoryBtn && <div className="transprt_info_inner_view">
-                                <div className="history_line_datePicker">
-                                    <p className='input_label'>
-                                        {t("Dan")}:
-                                    </p>
-                                    <DatePicker
-                                        placeholder={`${moment(new Date()).format(
-                                            "YYYY.DD.MM, 00:00:00"
-                                        )}`}
-                                        onChange={onChangeDateFrom}
-                                        size="large"
-                                        style={{width: "100%", borderRadius: '5px'}}
-                                        showTime
-                                    />
-                                    <p className='input_label'>
-                                        {t("Gacha")}:
-                                    </p>
-                                    <DatePicker
-                                        placeholder={`${moment(new Date()).format(
-                                            "YYYY.DD.MM, 23:59:59"
-                                        )}`}
-                                        onChange={onChangeDateTo}
-                                        size="large"
-                                        style={{width: "100%", borderRadius: '5px'}}
-                                        showTime
-                                    />
-
-                                    <div className="save_cansle_buttons">
-                                        <div className="save_button">
-                                            <button onClick={clear} className="cansle_button">
-                                                {t("Bekor qilish")}
-                                            </button>
-                                        </div>
-                                        <div className="save_button">
-                                            <button onClick={getHistoryData} className="add_button">
-                                                {t("Saqlash")}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            }
-                        </div>
+                    {isMobile && (
+                        <button type="button" className="mp-fab" onClick={() => setDrawerOpen(true)} aria-label={t("Ro'yxat")}>
+                            <MenuIcon size={22}/>
+                        </button>
                     )}
+
+                    <div className="mp-controls">
+                        <MapControl title={t('Kattalashtirish')} onClick={() => zoomBy(1)}>
+                            <PlusIcon size={20}/>
+                        </MapControl>
+                        <MapControl title={t('Kichraytirish')} onClick={() => zoomBy(-1)}>
+                            <MinusIcon size={20}/>
+                        </MapControl>
+                        <MapControl active={satellite} title={t("Sun'iy yo'ldosh")} onClick={() => setSatellite(s => !s)}>
+                            <LayersIcon size={20}/>
+                        </MapControl>
+                        <MapControl active={showTrails} title={t('Yurgan izi')} onClick={() => setShowTrails(s => !s)}>
+                            <MapIcon size={20}/>
+                        </MapControl>
+                        <MapControl active={followSelected} title={t('Kuzatib borish')} onClick={() => setFollowSelected(f => !f)}>
+                            <TargetIcon size={20}/>
+                        </MapControl>
+                        <MapControl title={t("To'liq ekran")} onClick={toggleFullscreen}>
+                            <ExpandIcon size={20}/>
+                        </MapControl>
+                    </div>
+
+                    {history?.line?.length > 1 && (
+                        <HistoryPlayback
+                            points={history.line}
+                            index={playIndex}
+                            onIndexChange={setPlayIndex}
+                            onClose={cancelHistory}
+                        />
+                    )}
+
+                    <MapContainer
+                        center={DEFAULT_CENTER}
+                        zoom={DEFAULT_ZOOM}
+                        maxZoom={MAX_ZOOM}
+                        zoomControl={false}
+                        attributionControl={false}
+                        className="mp-map__canvas"
+                    >
+                        {/* prefix={false} — "Leaflet" brendi olib tashlanadi; plitka atribusiyasi (litsenziya) qoladi */}
+                        <AttributionControl position="bottomright" prefix={false}/>
+                        <ScaleControl position="bottomleft" imperial={false}/>
+
+                        {tiles.map(layer => (
+                            <TileLayer
+                                key={layer.url}
+                                url={layer.url}
+                                attribution={layer.attribution}
+                                maxZoom={MAX_ZOOM}
+                                maxNativeZoom={layer.maxNativeZoom}
+                                zIndex={layer.overlay ? 2 : 1}
+                            />
+                        ))}
+
+                        <MapBridge mapRef={mapRef} onReady={setMapReady} onZoomChange={setZoom}/>
+
+                        {showTrails && markers.map(vehicle => {
+                            const track = trails[vehicle.device_id];
+                            if (!track || track.length < 2) return null;
+                            const isSelected = selectedId === vehicle.device_id;
+                            const tail = track[track.length - 1];
+                            const speed = vehicle.speed || 0;
+                            return (
+                                <React.Fragment key={`trail-${vehicle.device_id}`}>
+                                    <TrailLine
+                                        points={track}
+                                        palette={trailPalette}
+                                        casing={lineCasing}
+                                        weight={isSelected ? 5 : 3}
+                                        arrows={isSelected}
+                                    />
+                                    {/* iz oxiridan belgi turgan joygacha */}
+                                    <Polyline
+                                        ref={(el) => {
+                                            if (el) headRefs.current[vehicle.device_id] = el;
+                                            else delete headRefs.current[vehicle.device_id];
+                                        }}
+                                        positions={[tail.p, headPos.current[vehicle.device_id] || tail.p]}
+                                        pathOptions={{
+                                            color: speed < 5 ? trailPalette.slow : speed < 30 ? trailPalette.normal : trailPalette.fast,
+                                            weight: isSelected ? 5 : 3,
+                                            opacity: 0.9,
+                                            lineCap: 'round',
+                                            lineJoin: 'round',
+                                        }}
+                                        interactive={false}
+                                    />
+                                </React.Fragment>
+                            );
+                        })}
+
+                        {history?.line?.length > 0 && (
+                            <>
+                                {/* to'liq yo'l — susaytirilgan */}
+                                <RouteLine
+                                    positions={history.line}
+                                    color={routeColors.history}
+                                    casing={lineCasing}
+                                    weight={3}
+                                    arrows={false}
+                                    eventHandlers={lineHandlers}
+                                />
+                                {/* o'ynatilgan qismi — to'yingan, strelkalari bilan */}
+                                <RouteLine
+                                    positions={history.line.slice(0, playIndex + 1)}
+                                    color={routeColors.history}
+                                    casing={lineCasing}
+                                    weight={5}
+                                    eventHandlers={lineHandlers}
+                                />
+                                <Marker position={history.line[0]} icon={START_ICON} interactive={false} keyboard={false}/>
+                                <Marker position={history.line[history.line.length - 1]} icon={END_ICON} interactive={false} keyboard={false}/>
+                                {history.line[playIndex] && (
+                                    <Marker position={history.line[playIndex]} icon={playheadIcon} interactive={false} keyboard={false}/>
+                                )}
+                            </>
+                        )}
+
+                        {liveRoute.length > 1 && (
+                            <RouteLine
+                                positions={liveRoute}
+                                color={routeColors.live}
+                                casing={lineCasing}
+                                eventHandlers={lineHandlers}
+                            />
+                        )}
+
+                        {hoveredLine && (
+                            <Popup position={hoveredLine} autoPan={false} closeButton={false}>
+                                <span className="gps-popup-text">
+                                    {t("Bosib o'tgan masofasi")}: {shownDistance || 0} {t('km')}
+                                </span>
+                            </Popup>
+                        )}
+
+                        {allStops.map((s, i) => (
+                            <Marker key={`${s.kind}-${i}`} position={toPoint(s.coordinate)} icon={STOP_ICONS[s.kind]}>
+                                <MapTooltip direction="top" offset={[0, -14]} className="gps-tooltip gps-tooltip--card" opacity={1}>
+                                    <span className={`gps-stop-tip is-${s.kind}`}>
+                                        <span className="gps-stop-tip__head">
+                                            <i>{s.kind === 'short' ? 'S' : 'P'}</i>
+                                            {s.kind === 'short' ? t("Qisqa to'xtash") : t("Uzoq to'xtash")}
+                                        </span>
+                                        <span className="gps-stop-tip__duration">
+                                            <small>{t("Davomiyligi")}</small>
+                                            <b>{s.stop_duration || '—'}</b>
+                                        </span>
+                                        <span className="gps-stop-tip__row">
+                                            <small>{t("Boshlanish")}</small>{formatDateTime(s.stop_start_time)}
+                                        </span>
+                                        <span className="gps-stop-tip__row">
+                                            <small>{t("Tugash")}</small>{formatDateTime(s.stop_end_time)}
+                                        </span>
+                                    </span>
+                                </MapTooltip>
+                            </Marker>
+                        ))}
+
+                        <MarkerClusterGroup
+                            iconCreateFunction={clusterIcon}
+                            maxClusterRadius={CLUSTER_MAX_RADIUS}
+                            disableClusteringAtZoom={CLUSTER_OFF_ZOOM}
+                            spiderfyOnMaxZoom={false}
+                            showCoverageOnHover={false}
+                            zoomToBoundsOnClick
+                            chunkedLoading
+                        >
+                            {markers.map(car => (
+                                <TrainMarker
+                                    key={car.device_id}
+                                    car={car}
+                                    selected={selectedId === car.device_id}
+                                    onSelect={onSelectVehicle}
+                                    pollInterval={POLL_MS}
+                                    onMove={onVehicleMove}
+                                    showPlate={zoom >= PLATE_ZOOM}
+                                />
+                            ))}
+                        </MarkerClusterGroup>
+                    </MapContainer>
                 </div>
 
                 <Drawer
-                    title=""
-                    placement={placement}
-                    // closable={false}
-                    onClose={onClose}
-                    open={open}
-                    key={placement}
+                    placement="bottom"
+                    height="78vh"
+                    zIndex={1100} /* xarita tugmalari (1010–1020) panel ustida qolmasin */
+                    rootClassName="mp-sheet"
+                    open={isMobile && drawerOpen}
+                    onClose={() => setDrawerOpen(false)}
+                    closeIcon={<CloseIcon size={20}/>}
+                    styles={{body: {padding: 0}}}
                 >
-                    {transportInfo ? (
-                        <div className="transprts_map_left">
-                            <div className="transprts_top">
-                                <div className="transprts_title_search">
-                                    <div className="transprts_title">
-                                        <div className="transprts_title_line"></div>
-                                        {t("Transportlar")}
-                                    </div>
-                                </div>
-                                {/*<hr/>*/}
-
-                                <div className="transprts_search">
-                                    <div className="filter_input">
-                                        {/*<IoSearch size={24}/>*/}
-                                        <img src={searchIconNew}/>
-                                        {/*<input*/}
-                                        {/*    onChange={(e) => {*/}
-                                        {/*        setFilterTransport({*/}
-                                        {/*            ...filterTransPort,*/}
-                                        {/*            searched_data: e.currentTarget.value,*/}
-                                        {/*        });*/}
-                                        {/*    }}*/}
-                                        {/*    placeholder={t("Izlash")}*/}
-                                        {/*/>*/}
-
-                                        <input
-                                            value={searchText}
-                                            onChange={(e) => {
-                                                const value = e.currentTarget.value;
-
-                                                setSearchText(value); // inputni boshqaradi
-
-                                                shouldCenterAfterSearch.current = true;
-
-                                                setFilterTransport({
-                                                    ...filterTransPort,
-                                                    searched_data: value,
-                                                });
-                                            }}
-                                            placeholder={t("Izlash")}
-                                        />
-
-
-                                    </div>
-                                    <Popover
-                                        open={openFilterPop}
-                                        onOpenChange={handleOpenChangePopover}
-                                        content={(
-                                            <div className="transprts_search_filter_popover">
-                                                <Radio.Group
-                                                    style={{display: 'flex', flexDirection: 'column', gap: 8}}
-                                                    onChange={onChangeRadio}
-                                                    value={valueRadio}
-                                                    options={[
-                                                        {
-                                                            value: "all",
-                                                            label: t("Barchasi"),
-                                                        },
-                                                        {
-                                                            value: "active",
-                                                            label: t("Faol"),
-                                                        },
-                                                        {
-                                                            value: "inactive",
-                                                            label: t("Nofaol"),
-                                                        },
-                                                    ]}
-                                                />
-                                            </div>
-                                        )} placement="bottom">
-                                        <div className="transprts_search_filter">
-                                            <img src={filterImg}/>
-                                        </div>
-                                    </Popover>
-                                </div>
-
-                                <div className="transprts_list">
-                                    {markers?.map((item, index) => {
-                                        const isChecked = checkedList.some(
-                                            (check) => check === item.display_name
-                                        );
-                                        return (
-                                            <div className="transprts_items" key={index}>
-                                                {item.display_name}
-                                                <span>
-                          <Checkbox
-                              checked={isChecked}
-                              onChange={() => onChange(item)}
-                              type="checkbox"
-                          />
-                        </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="transprts_total_search">
-                                {/*<hr/>*/}
-                                <div className="transprts_total">
-                                    <p>{t("Jami")} : {total}</p>
-                                    {/*<p>{t("Faollar")} : {activeCount}</p>*/}
-                                </div>
-
-                                <div className="transprts_total_search_buttons">
-                                    <div onClick={clearCheckbox} className="save_button">
-                                        <button className="cansle_button">{t("Tozalash")}</button>
-                                    </div>
-                                    <div onClick={onSearched} className="save_button">
-                                        <button className="add_button">{t("Qidirish")}</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="transprts_info">
-                            <div className="transprt_info_title">
-                                <span onClick={backInfo}><GrLinkPrevious/>{t("Batafsil")}</span>
-                                <button className="add_button" style={{width: '40px', padding: 0}}
-                                        onClick={refreshFunction}
-                                >
-                                    <IoMdRefresh style={{fontSize: '20px'}}/>
-                                </button>
-                            </div>
-                            <Collapse items={[{
-                                key: '1', label: t("Transport haqida ma’lumot"),
-                                children:
-                                    <>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Maxsus raqami")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.display_name}</div>
-                                        </div>
-                                        {/*<div className="underline"></div>*/}
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Izoh")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.description}</div>
-                                        </div>
-                                        {/*<div className="underline"></div>*/}
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Turi")}:
-                                            </div>
-                                            <div className="transprt_info_item2">
-                                                {
-                                                    clickedMarker?.type == 'train' ? t("Teplavoz") :
-                                                        clickedMarker?.type == 'truck' ? t("Og'ir avtomobil") :
-                                                            clickedMarker?.type == 'bus' ? t("Avtobus") :
-                                                                clickedMarker?.type == 'car' ? t("Yengil avtomobil") :
-                                                                    clickedMarker?.type == 'ladder' ? t("Trap") :
-                                                                        clickedMarker?.type == 'tractor' ? t("Tractor") :
-                                                                            clickedMarker?.type == 'reloaded' ? t("Autolift") :
-                                                                                clickedMarker?.type == 'tz' ? t("tz") :
-                                                                                    clickedMarker?.type == 'firetruck' ? t("firetruck") :
-                                                                                        clickedMarker?.type == 'specialcar' ? t("specialcar") :
-                                                                                            clickedMarker?.type == 'lenta' ? t("lenta") :
-                                                                                                clickedMarker?.type == 'ibp' ? t("IBP") : ''
-                                                }
-                                            </div>
-                                        </div>
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Markasi va modeli")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.vehicle_model}</div>
-                                        </div>
-
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Ishlab chiqarilgan yili")}:
-                                            </div>
-                                            <div
-                                                className="transprt_info_item2">{clickedMarker?.vehicle_manufactured_year}</div>
-                                        </div>
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Egasi")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.vehicle_driver}</div>*/}
-                                        {/*</div>*/}
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Boshqarma")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div*/}
-                                        {/*        className="transprt_info_item2">{clickedMarker?.vehicle_department}</div>*/}
-                                        {/*</div>*/}
-
-                                    </>
-                            }]}/>
-
-                            <Collapse defaultActiveKey={['2']} items={collapseItems}/>
-
-                            <Collapse items={[{
-                                key: '3', label: t("Yoqilg'i haqida ma'lumot"),
-                                children:
-                                    <>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Mavjud yoqilg'i")} :
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.fuel_level > 0 ?
-                                                `${clickedMarker?.fuel_level} l` : "-"}
-                                            </div>
-                                        </div>
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Mavjud yoqilg'i")}{t("(%)")} :*/}
-                                        {/*    </div>*/}
-                                        {/*    <div*/}
-                                        {/*        className="transprt_info_item2">{!clickedMarker.fuel_level_percentage ? "-" :*/}
-                                        {/*        <div>{clickedMarker.fuel_level_percentage} %</div>}</div>*/}
-                                        {/*</div>*/}
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Yoqilg'i sarfi")} (100km):*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.fuel_rate} l</div>*/}
-                                        {/*</div>*/}
-
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Yoqilg'i quyilgan vaqt")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div*/}
-                                        {/*        className="transprt_info_item2">{clickedMarker?.last_refuel_time == null ? "" : moment(clickedMarker.last_refuel_time).format('DD.MM.YYYY, HH:mm')}</div>*/}
-                                        {/*</div>*/}
-                                    </>
-                            }]}/>
-                            <Collapse items={[{
-                                key: '4', label: t("GPS haqida ma'lumot"),
-                                children:
-                                    <>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("IMEI")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.device_id}</div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                GSM {t("Signal")}:
-                                            </div>
-                                            <div className="transprt_info_item2">
-                                                {clickedMarker?.gsm_signal === 0 ? t("Tarmoq yo'q") :
-                                                    clickedMarker?.gsm_signal === 1 ? t("Juda zaif") :
-                                                        clickedMarker?.gsm_signal === 2 ? t("Zaif") :
-                                                            clickedMarker?.gsm_signal === 3 ? t("O'rtacha") :
-                                                                clickedMarker?.gsm_signal === 4 ? t("Yaxshi") :
-                                                                    clickedMarker?.gsm_signal === 5 ? t("A'lo") :
-                                                                        "Noto'g'ri signal"
-
-                                                }
-                                            </div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Battery Level")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.battery_level} %</div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("Model")}:
-                                            </div>
-                                            <div className="transprt_info_item2">{clickedMarker?.model}</div>
-                                        </div>
-                                        <div className="transprt_info_inner">
-                                            <div className="transprt_info_item">
-                                                {t("GPS o'rnatilgan sana")}:
-                                            </div>
-                                            <div className="transprt_info_item2">
-                                                {clickedMarker?.created_time ? moment(clickedMarker?.created_time).format('DD.MM.YYYY , HH:mm') : ""}
-                                            </div>
-                                        </div>
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Analog Input 1")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.analog_input1}</div>*/}
-                                        {/*</div>*/}
-                                        {/*<div className="transprt_info_inner">*/}
-                                        {/*    <div className="transprt_info_item">*/}
-                                        {/*        {t("Analog Input 2")}:*/}
-                                        {/*    </div>*/}
-                                        {/*    <div className="transprt_info_item2">{clickedMarker?.analog_input2}</div>*/}
-                                        {/*</div>*/}
-                                    </>
-                            }]}/>
-                            <div className="transprt_info_inner_view">
-                                <div className="transprt_info_item">
-                                    {t("Tarix")}:
-                                </div>
-                                <button onClick={() => setShowHistoryBtn(!showHistoryBtn)} className="view_button">
-                                    {
-                                        showHistoryBtn ? t("Bekor qilish") : t("Ko'rish")
-                                    }
-                                </button>
-                            </div>
-                            <div className="underline"></div>
-
-                            {showHistoryBtn && <div className="transprt_info_inner_view">
-                                <div className="history_line_datePicker">
-                                    <p className='input_label'>
-                                        {t("Dan")}:
-                                    </p>
-                                    <DatePicker
-                                        placeholder={`${moment(new Date()).format(
-                                            "YYYY.DD.MM, 00:00:00"
-                                        )}`}
-                                        onChange={onChangeDateFrom}
-                                        size="large"
-                                        style={{width: "100%", borderRadius: '5px'}}
-                                        showTime
-                                    />
-                                    <p className='input_label'>
-                                        {t("Gacha")}:
-                                    </p>
-                                    <DatePicker
-                                        placeholder={`${moment(new Date()).format(
-                                            "YYYY.DD.MM, 23:59:59"
-                                        )}`}
-                                        onChange={onChangeDateTo}
-                                        size="large"
-                                        style={{width: "100%", borderRadius: '5px'}}
-                                        showTime
-                                    />
-
-                                    <div className="save_cansle_buttons">
-                                        <div className="save_button">
-                                            <button onClick={clear} className="cansle_button">
-                                                {t("Bekor qilish")}
-                                            </button>
-                                        </div>
-                                        <div className="save_button">
-                                            <button onClick={getHistoryData} className="add_button">
-                                                {t("Saqlash")}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            }
-                        </div>
-                    )}
+                    <div className="mp-drawer">{panelContent}</div>
                 </Drawer>
-
-                <div className="transprts_map_right">
-                    <div className="saidbar_inner_mobile" onClick={showDrawer}>
-                        <img src={mobileMenuIcon}/>
-                    </div>
-
-                    <GoogleMap
-                        zoom={mapZoom}
-                        center={mapCenter}
-                        mapContainerStyle={{height: "100%", width: "100%"}}
-                        onLoad={onLoad}
-                    >
-
-
-                        {/* 🔵 Short stop nuqtalar */}
-                        {shortStops?.map((coord, index) => (
-                            <OverlayView
-                                key={`short-${index}`}
-                                position={{lat: coord?.coordinate[0], lng: coord?.coordinate[1]}}
-                                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                            >
-                                <div
-                                    onMouseEnter={() =>
-                                        setHoveredStop({
-                                            ...coord,
-                                            type: "short",
-                                            index
-                                        })
-                                    }
-                                    onMouseLeave={() => setHoveredStop(null)}
-                                    style={{
-                                        width: 30,
-                                        height: 30,
-                                        transform: "translate(-50%, -100%)",
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    <img
-                                        className='info_icon_short'
-                                        src={shortIcon}
-                                        alt="vehicle"
-                                        draggable={false}
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            pointerEvents: "none"
-                                        }}
-                                    />
-                                </div>
-                            </OverlayView>
-                        ))}
-
-                        {/* 🔴 Long stop nuqtalar */}
-                        {longStops?.map((coord, index) => (
-                            <OverlayView
-                                key={`long-${index}`}
-                                position={{lat: coord?.coordinate[0], lng: coord?.coordinate[1]}}
-                                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                            >
-                                <div
-                                    onMouseEnter={() =>
-                                        setHoveredStop({
-                                            ...coord,
-                                            type: "long",
-                                            index
-                                        })
-                                    }
-                                    onMouseLeave={() => setHoveredStop(null)}
-                                    style={{
-                                        width: 30,
-                                        height: 30,
-                                        transform: "translate(-50%, -100%)",
-                                        cursor: "pointer",
-                                    }}
-                                >
-                                    <img
-                                        className='info_icon_long'
-                                        src={longIcon}
-                                        alt="vehicle"
-                                        draggable={false}
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            pointerEvents: "none"
-                                        }}
-                                    />
-                                </div>
-                            </OverlayView>
-                        ))}
-
-                        {hoveredStop && (
-                            <InfoWindow
-                                position={{
-                                    lat: hoveredStop?.coordinate[0],
-                                    lng: hoveredStop?.coordinate[1]
-                                }}
-                                options={{
-                                    pixelOffset: new window.google.maps.Size(0, -30)
-                                }}
-                            >
-                                <div className="info_short_long">
-                                    <h2>{hoveredStop?.type === "short" ? t("Qisqa to'xtash") : t("Uzoq to'xtash")}</h2>
-                                    <p>{t("Davomiyligi")} : {hoveredStop?.stop_duration}</p>
-                                    <p>{t("Boshlanish")} : {moment(hoveredStop?.stop_start_time).format('DD.MM.YYYY , HH:mm:ss')}</p>
-                                    <p>{t("Tugash")} : {moment(hoveredStop?.stop_end_time).format('DD.MM.YYYY , HH:mm:ss')}</p>
-                                    <p>{t("Joylashuv")} : {hoveredStop?.coordinate[0]} , {hoveredStop?.coordinate[1]}</p>
-                                </div>
-                            </InfoWindow>
-                        )}
-
-
-                        {/* 🔴 1. TARIX (QIZIL LINE) */}
-                        {deviseHistoryLine?.length > 0 && (
-                            <Polyline
-                                path={deviseHistoryLine.map(([lat, lng]) => ({lat, lng}))}
-                                options={{strokeColor: "red"}}
-                            />
-                        )}
-
-                        {/* 🟢 2. LIVE ROUTE (YASHIL LINE) — faqat tarix yo‘q bo‘lsa */}
-                        {!deviseHistoryLine?.length && clickedMarker?.route?.length > 0 && (
-                            <Polyline
-                                path={clickedMarker.route.map(([lat, lng]) => ({lat, lng}))}
-                                options={{strokeColor: "green"}}
-                            />
-                        )}
-
-                        {/* 🚆 3. MARKERLAR HAR DOIM KO‘RINADI */}
-                        {markers.map((car) => (
-                            <TrainMarker
-                                key={car.device_id}
-                                car={car}
-                                setMapZoom={setMapZoom}
-                                setHistoryParams={setHistoryParams}
-                                historyParams={historyParams}
-                                onTransportInfoChange={onTransportInfoChange}
-                                setMapCenter={setMapCenter}
-                                selectedCar={selectedCar}
-                                setSelectedCar={setSelectedCar}
-                                getGPSData={getGPSData}
-                                getSingleData={getSingleData}
-                            />
-                        ))}
-
-                    </GoogleMap>
-
-
-                </div>
             </div>
-        </div>
-    )
-        ;
-}
+        </ConfigProvider>
+    );
+};
 
 export default GoogleMapTrain;

@@ -1,15 +1,194 @@
-.loader{
-    position: absolute;
-    left: 0%;
-    top: 0%;
-    z-index: 10000;
-    border-radius: 0px;
+/* Umumiy yuklanish ko'rsatkichi (Loader.jsx): xira, biroz xiralashtirilgan parda va markazda aylanuvchi halqalar */
+
+.loader {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.7);
-    height: 100%;
-    width: 100%;
-    opacity: 5;
-    transition: opacity 0.3s;
+    background: color-mix(in srgb, var(--bg-primary, #fff) 52%, transparent);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    animation: loader-in .2s ease-out both;
+}
+@keyframes loader-in {
+    from { opacity: 0; }
+}
+/* halqalar turadigan lavha */
+.loader_box {
+    position: relative;
+    width: 84px;
+    height: 84px;
+    border: 1px solid var(--border-secondary, rgba(0, 0, 0, .08));
+    border-radius: 24px;
+    background: var(--bg-primary, #fff);
+    box-shadow: var(--shadow-3xl, 0 24px 60px rgba(0, 0, 0, .2));
+}
+.loader_ring {
+    position: absolute;
+    inset: 18px;
+    border: 3px solid color-mix(in srgb, var(--utility-brand-500, #16B364) 16%, transparent);
+    border-top-color: var(--utility-brand-500, #16B364);
+    border-radius: 50%;
+    animation: loader-spin .9s linear infinite;
+}
+/* ichki halqa teskari tomonga, sekinroq aylanadi */
+.loader_ring--inner {
+    inset: 28px;
+    border-width: 2px;
+    border-top-color: transparent;
+    border-bottom-color: var(--utility-brand-500, #16B364);
+    opacity: .7;
+    animation-duration: 1.4s;
+    animation-direction: reverse;
+}
+.loader_dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--utility-brand-500, #16B364);
+    animation: loader-pulse 1.2s ease-in-out infinite;
+}
+@keyframes loader-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes loader-pulse {
+    50% { transform: scale(.55); opacity: .5; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .loader_ring {
+        animation-duration: 2.4s;
+    }
+    .loader_dot {
+        animation: none;
+    }
+}
+
+/* ===== Panel ichidagi yuklanish (dbParts → PanelLoader) =====
+   ro'yxat/jadval ustida, uning markazida suzuvchi lavha; barcha bo'limlarda bir xil */
+
+/* ro'yxat va uning ustidagi yuklanish qatlami */
+.rdb-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.rdb-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    pointer-events: none;
+    animation: rdb-loader-in .22s ease-out both;
+}
+/* jadvalda — sarlavha qatori ostidagi maydon markazi */
+.rdb-loader--table {
+    padding-top: 60px;
+}
+@keyframes rdb-loader-in {
+    from { opacity: 0; }
+}
+.rdb-loader_card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--border-secondary, #e4e7ec) 80%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-primary, #fff) 86%, transparent);
+    -webkit-backdrop-filter: blur(10px) saturate(1.4);
+    backdrop-filter: blur(10px) saturate(1.4);
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 12px 32px -8px rgba(16, 24, 40, .18);
+    animation: rdb-loader-pop .32s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+@keyframes rdb-loader-pop {
+    from { transform: translateY(6px) scale(.94); opacity: 0; }
+}
+/* aylanuvchi gradient yoy + markazda pulslanuvchi nuqta */
+.rdb-loader_spin {
+    position: relative;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--utility-brand-500, #16B364) 10%, transparent);
+}
+.rdb-loader_ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0 15%, var(--utility-brand-500, #16B364));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3.5px), #000 calc(100% - 3px));
+    animation: rdb-loader-spin .85s linear infinite;
+}
+/* ichki ingichka yoy teskari tomonga aylanadi */
+.rdb-loader_ring--inner {
+    inset: 8px;
+    background: conic-gradient(from 180deg, transparent 0 55%, var(--utility-brand-400, #3CCB7F));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
+    animation-duration: 1.3s;
+    animation-direction: reverse;
+}
+.rdb-loader_dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: var(--utility-brand-500, #16B364);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--utility-brand-500, #16B364) 40%, transparent);
+    animation: rdb-loader-pulse 1.2s ease-in-out infinite;
+}
+.rdb-loader_text {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--text-secondary, #344054);
+    white-space: nowrap;
+}
+@keyframes rdb-loader-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes rdb-loader-pulse {
+    50% { transform: scale(.6); box-shadow: 0 0 0 5px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .rdb-loader_ring { animation-duration: 2.4s; }
+    .rdb-loader_dot, .rdb-loader_card { animation: none; }
+}
+
+/* Sensorli qurilmalar: orqa fon blur'i jonli xarita ustida GPU'ni og'irlashtiradi
+   (pirpirash, chizilmay qolgan joylar) — o'rniga biroz quyuqroq fon. */
+@media (hover: none) {
+    .loader,
+    .rdb-loader_card {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+    .rdb-loader_card {
+        background: var(--bg-primary, #fff);
+    }
+}
+
+/* PanelLoader ham Loader lavhasidan foydalanadi — yumshoq paydo bo'ladi */
+.rdb-loader .loader_box {
+    flex: none;
+    animation: rdb-loader-pop .32s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+@media (prefers-reduced-motion: reduce) {
+    .rdb-loader .loader_box { animation: none; }
 }

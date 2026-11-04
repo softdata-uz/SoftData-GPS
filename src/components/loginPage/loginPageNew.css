@@ -1,129 +1,251 @@
-.login_page_new {
-    display: grid;
-    grid-template-rows: 1.3fr 2fr;
-    height: 100vh;
+/* Logo inside login-kit's top bar: same height the kit uses for <img> logos.
+   Text paths use currentColor, so the kit's --text-primary paints them per theme. */
+.lg-topbar__logo .lp-logo {
+    display: block;
+    height: 34px;
+    width: auto;
 }
 
-.login_page_new_top {
-    background: #1C232C;
-    position: relative;
-    display: flex;
-    justify-content: center;
-}
-
-
-.login_page_new_bottom {
-    background: #FFF;
-}
-
-.login_page_new_login {
-    position: absolute;
-    top: 50%;
-    width: 350px;
-    display: inline-flex;
-    padding: 30px 20px;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    border-radius: 10px;
-    border: 1px solid #F7F7F8;
-    background: #FFF;
-    box-shadow: 0px 40px 100px 0px rgba(0, 0, 0, 0.06);
-}
-
-.login_page_new_login_body {
-    width: 100%;
-}
-
-.login_page_new_login_body_inner {
-    text-align: center;
-}
-
-.login_page_new_login_body_inner h2 {
-    color: #1C232C;
-    text-align: center;
-    font-family: Inter;
-    font-size: 24px;
-    font-style: normal;
-    font-weight: 700;
-    line-height: normal;
-}
-
-.login_page_new_login_body_inner p {
-    color: #636C79;
-    text-align: center;
-    font-family: Inter;
-    font-size: 16px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: normal;
-}
-
-.login_page_new_login_body_inner_form {
-
-}
-
-.login_page_new_login_body_inner_form {
-    margin-top: 25px;
-}
-.ant-select-selection-item {
-    font-family: Inter!important;
-    font-style: normal!important;
-    font-weight: 600!important;
-    font-size: 14px!important;
-    line-height: 20px!important;
-}
-.ant-select-item-option-content{
-    font-family: Inter!important;
-    font-style: normal!important;
-    font-weight: 600!important;
-    font-size: 14px!important;
-    line-height: 20px!important;
-}
-.login_page_new_login_body_inner_form .ant-input {
-    height: 30px !important;
-    font-family: Inter;
-    font-style: normal;
-    font-weight: 600;
-    font-size: 14px;
-    line-height: 20px;
-}
-
-.login_page_new_login_body_inner_form .ant-input-affix-wrapper {
-    display: flex !important;
-    align-items: center !important;
-    border-radius: 5px !important;
-    height: 40px !important;
-    /*margin-top: 10px;*/
-}
-
-.login_page_new_login_body_inner_form button {
-    font-family: Inter;
-    font-style: normal;
-    font-weight: 600;
-    font-size: 14px;
-    line-height: 20px;
-    color: #FFFFFF;
-    background: #17B26A;
-    border-radius: 5px;
-    width: 100%;
-    height: 40px;
+/* ---------- Legacy global rules (other pages rely on these since CSS is bundled globally) ---------- */
+.ant-select-selection-item,
+.ant-select-item-option-content {
+    font-family: Inter !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    line-height: 20px !important;
 }
 
 .ant-input input {
     background: transparent !important;
 }
 
-.ant-input-prefix .anticon {
-    /*color: green!important;*/
+/* ---------- Mavzu va til — ichki sahifalar header'idagi segmentli guruhlar ---------- */
+.lg-page {
+    --lp-seg-bg: #fafafa;
+    --lp-seg-border: #e9eaeb;
+    --lp-seg-active: #ffffff;
+    --lp-seg-shadow: 0 1px 3px rgba(10, 13, 18, 0.1), 0 1px 2px -1px rgba(10, 13, 18, 0.1);
+    --lp-brand-soft: #edfcf2;
+    --lp-brand-soft-border: #aaf0c4;
+    --lp-brand-soft-text: #087443;
 }
 
-.login_select {
-    margin-top: 20px;
+.lg-page.is-dark {
+    --lp-seg-bg: #13161b;
+    --lp-seg-border: #22262f;
+    --lp-seg-active: #0c0e12;
+    --lp-seg-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --lp-brand-soft: #053321;
+    --lp-brand-soft-border: #095c37;
+    --lp-brand-soft-text: #73e2a3;
 }
 
+.lp-prefs {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-.checkbox_row :where(.css-dev-only-do-not-override-19lec04).ant-form-item {
-    margin-bottom: 4px !important;
+.lp-prefs__sep {
+    width: 1px;
+    height: 24px;
+    background: var(--lp-seg-border);
+}
+
+.lp-seg,
+.lp-seg-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 40px;
+    padding: 3px;
+    border: 1px solid var(--lp-seg-border);
+    border-radius: 10px;
+    background: var(--lp-seg-bg);
+}
+
+/* til guruhi ichidagi segment o'z qobig'isiz */
+.lp-seg-wrap .lp-seg {
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.lp-seg-wrap__globe {
+    flex: none;
+    margin: 0 4px 0 7px;
+    color: var(--fg-quaternary);
+}
+
+.lp-seg-wrap__divider {
+    flex: none;
+    width: 1px;
+    height: 18px;
+    margin: 0 6px 0 4px;
+    background: var(--lp-seg-border);
+}
+
+.lp-seg__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-width: 34px;
+    padding: 0 8px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--fg-quaternary);
+    cursor: pointer;
+    transition: background-color 120ms, color 120ms, box-shadow 120ms;
+}
+
+.lp-seg--icon .lp-seg__item {
+    width: 34px;
+    padding: 0;
+}
+
+.lp-seg__item:hover:not(.is-active) {
+    color: var(--text-primary);
+}
+
+/* faol — ko'tarilgan tugmacha; mavzuda ikonka yashil, tilda yashil fon */
+.lp-seg__item.is-active {
+    border-color: var(--lp-seg-border);
+    background: var(--lp-seg-active);
+    box-shadow: var(--lp-seg-shadow);
+    color: var(--text-primary);
+}
+
+.lp-seg--icon .lp-seg__item.is-active {
+    color: var(--brand-600);
+}
+
+.lg-page.is-dark .lp-seg--icon .lp-seg__item.is-active {
+    color: var(--brand-500);
+}
+
+.lp-seg--text .lp-seg__item.is-active {
+    border-color: var(--lp-brand-soft-border);
+    background: var(--lp-brand-soft);
+    box-shadow: none;
+    color: var(--lp-brand-soft-text);
+}
+
+.lp-seg__item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+@media (max-width: 480px) {
+    .lp-seg-wrap__globe,
+    .lp-seg-wrap__divider {
+        display: none;
+    }
+}
+
+/* ============================ telefon ============================
+   Grid ustuni kontent bilan kengaymasin — yuqori qator ekrandan keng bo'lsa forma
+   o'ngga surilib, qirqilib qolardi. Yuqori qator tor ekranga sig'adi;
+   sarlavha va himoya yozuvi markazda. */
+@media (max-width: 960px) {
+    .lg-page {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lg-main {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .lg-main {
+        padding: 16px 16px 24px;
+    }
+
+    .lg-topbar {
+        gap: 8px;
+    }
+
+    .lg-topbar__logo {
+        flex: 0 1 auto;
+        min-width: 0;
+    }
+
+    .lg-topbar__logo .lp-logo {
+        height: 28px;
+        max-width: 100%;
+    }
+
+    .lg-topbar__actions {
+        flex: none;
+    }
+
+    .lp-prefs {
+        gap: 6px;
+    }
+
+    .lp-prefs__sep {
+        display: none;
+    }
+
+    .lp-seg,
+    .lp-seg-wrap {
+        height: 36px;
+    }
+
+    .lp-seg__item {
+        min-width: 30px;
+        padding: 0 6px;
+        font-size: 12px;
+    }
+
+    .lp-seg--icon .lp-seg__item {
+        width: 30px;
+    }
+
+    .lg-main__body {
+        padding: 24px 0;
+    }
+
+    .lg-form__heading {
+        align-items: center;
+        text-align: center;
+    }
+
+    .lg-tls {
+        font-size: 14px;
+        line-height: 20px;
+    }
+}
+
+/* juda tor ekranlar (320–360px) */
+@media (max-width: 360px) {
+    .lg-topbar__logo .lp-logo {
+        height: 24px;
+    }
+
+    .lp-seg__item {
+        min-width: 28px;
+        padding: 0 4px;
+    }
+
+    .lp-seg--icon .lp-seg__item {
+        width: 28px;
+    }
+}
+
+/* himoyalangan kanal yozuvi — qulf ikonkasiz, matn markazda */
+.lg-tls svg {
+    display: none;
+}
+
+.lg-tls {
+    text-align: center;
 }

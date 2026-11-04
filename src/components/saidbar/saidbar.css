@@ -1,432 +1,817 @@
+/* ================= App shell & header =================
+   VIP Parking loyihasidagi components/shell.css + styles/prefs.css bilan bir xil
+   (logo | menyu | mavzu · til · profil). Barcha qiymatlar src/styles/tokens.css dan —
+   yorug'/qorong'i rejimda avtomatik almashadi (<html data-theme>). */
+
+:root {
+    /* --hd-h — kontentdan tashqaridagi umumiy balandlik (header, telefonda + pastki menyu) */
+    --shell-top-h: 72px;
+    --shell-tabbar-h: 0px;
+    --hd-h: calc(var(--shell-top-h) + var(--shell-tabbar-h));
+    --shell-gutter: var(--spacing-3xl);
+    --shell-control: 44px;
+    --shell-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --shell-fast: 120ms;
+    --shell-base: 200ms;
+}
+
 .full_content {
     height: 100vh;
-    /*display: grid;*/
-    /*grid-template-columns: 92px 1fr;*/
-}
-
-.full_content_left {
-    background: #1C232C;
-}
-
-
-.saidbar_inner {
-    padding: 16px;
-}
-
-.saidbar_inner_gps {
-    margin-bottom: 24px;
-    cursor: pointer;
-}
-
-.saidbar_inner_item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 60px;
-    height: 60px;
-    background: #2F3641;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    cursor: pointer;
-}
-
-.active_saidbar_inner_item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 60px;
-    height: 60px;
-    background: #26BF56;
-    border-radius: 8px;
-    margin-bottom: 16px;
-    cursor: pointer;
+    height: 100dvh; /* telefonda manzil paneli hisobga olinadi */
 }
 
 .full_content_right {
+    display: flex;
+    flex-direction: column;
     height: 100%;
+    overflow: hidden;
+    background: var(--bg-secondary);
 }
-
-.header {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    height: 78px;
-    background: #ffffff;
-    padding: 0 24px;
-}
-
-.header_left_inner {
-    display: flex;
-    flex-direction: row;
-}
-
-.header_left_inner_mobile {
-    display: none;
-}
-.header_left_inner_mobile .header_left_inner_mobile_logo{
-    width: 140px;
-    height: 25px;
-}
-.header_left_inner_item {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    margin-right: 24px;
-
-    font-family: Inter;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: normal;
-    color: #636C79;
-}
-
-.header_left_inner_item_active {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    margin-right: 24px;
-
-    font-family: Inter;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: normal;
-    color: black;
-}
-
-.header_left_icon {
-    margin-right: 10px;
-}
-
-.header_left_icon_active {
-    margin-right: 10px;
-    filter: brightness(0) saturate(100%) invert(57%) sepia(86%) saturate(384%) hue-rotate(86deg) brightness(87%) contrast(100%);
-}
-
-.header_right_inner {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-}
-
-.lang_dropdown{
-    padding: 2px 5px;
-    border-radius: 10px;
-    cursor: pointer;
-}
-
-/*.lang_dropdown option{*/
-/*    padding-top: 15px!important;*/
-/*}*/
-
-/*.opop{*/
-/*    background-color: red;*/
-/*}*/
-
-.lang_dropdown:focus-visible{
-    outline: none;
-}
-
-
-.languages {
-    display: flex;
-    /*align-items: center;*/
-    flex-direction: row;
-    /*background: red;*/
-}
-
-.languages_item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50px;
-    background: #F7F7F8;
-    color: #636C79;
-    margin-left: 16px;
-    cursor: pointer;
-    font-family: Inter;
-    font-size: 12px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: normal;
-}
-.languages_item_active{
-    background: rgba(38, 191, 86, 1);
-    color: #FFFFFF;
-}
-
-.badge_admin {
-    display: flex;
-    flex-direction: row;
-    margin-left: 8px;
-}
-
-.badge_admin_mobile {
-    display: none;
-}
-
-
-.rount_img {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    margin-left: 20px;
-    cursor: pointer;
-}
-
-.rount_img img {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-}
-
-.badge_admin_item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 4px;
-    background: #F7F7F8;
-    color: #636C79;
-    margin-left: 16px;
-    cursor: pointer;
-
-
-    border-radius: 8px;
-    border: 1px solid #D5D7DA;
-    background: #FFF;
-}
-
 
 .content {
-    height: calc(100vh - 78px);
-    background: #FFFFFF;
-    /*background: #F7F7F8;*/
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    overflow: hidden;
+    background: var(--bg-primary);
 }
 
-.header_drawer_menu {
-    height: 100%;
-}
+/* ==========================================================================
+   HEADER
+   ========================================================================== */
 
-
-.header_drawer_menu_inner_head {
-    display: flex;
+.shell-top {
+    /* 3 ustun: logo | menyu | boshqaruv. Menyu qolgan joyni egallaydi;
+       joy yetmasa torayib, skroll bo'ladi. */
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
     align-items: center;
+    gap: var(--spacing-3xl);
+    flex: none;
+    height: var(--shell-top-h);
+    padding: 0 var(--shell-gutter);
+    box-sizing: border-box;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-secondary);
+    font-family: var(--font-family-body);
 }
 
-.header_drawer_menu_inner_head span {
-    color: #000;
-    font-family: Inter;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 600;
-    line-height: normal;
-    margin-left: 10px;
-}
-.header_drawer_menu_inner_head img{
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.header_drawer_menu_inner {
-    display: flex;
-    height: 52px;
-    padding: 10px 16px;
-    align-items: center;
-    gap: 10px;
-    flex-shrink: 0;
-    align-self: stretch;
-    border-radius: 8px;
-    background: #F7F7F8;
-    margin-top: 25px;
-}
-
-.header_drawer_menu_inner_inner {
-    display: flex;
-    align-items: center;
-}
-
-.header_drawer_menu_inner_inner span {
-    color: #636C79;
-    font-family: Inter;
-    font-size: 14px;
-    font-style: normal;
-    font-weight: 500;
-    line-height: normal;
-    margin-left: 7px;
-}
-
-.header_drawer_menu_inner:last-child .header_drawer_menu_inner_inner span {
-    color: #EB4143;
-}
-
-/*admin*/
-
-.contentHeader svg {
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.contentHeader p {
-    font-family: Inter;
-    font-size: 14px;
-    font-weight: 500;
-    margin-left: 5px;
-}
-.contentHeader_inner {
-    cursor: pointer;
-    margin-bottom: 5px;
-    display: flex;
-    align-items: center;
-    border-radius: 7px;
-    padding: 5px 10px;
+.shell-top *,
+.shell-top *::before,
+.shell-top *::after {
     box-sizing: border-box;
 }
 
-.contentHeader_inner:hover {
-    background: #DDDEE2;
+/* logo va menyu orasida ingichka ajratgich */
+.shell-top__logo {
+    display: flex;
+    align-items: center;
+    flex: none;
+    height: 32px;
+    padding-right: var(--spacing-3xl);
+    border-right: 1px solid var(--border-secondary);
+    color: var(--text-primary);
 }
 
-.contentHeader_inner:first-child {
-    color: #717680;
-}
-.contentHeader_inner:last-child {
-    /*color: red;*/
-    color: #EB4143;
-    margin-bottom: 0px;
+.shell-top__logo svg {
+    display: block;
+    height: 32px;
+    width: auto;
 }
 
-.monitoring_header_user{
-    margin-left: 10px;
+/* o'ng tomon: mavzu, til va foydalanuvchi — uchta alohida guruh */
+.shell-top__right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: none;
 }
 
-.monitoring_header_user {
-    border-radius: 4px;
-    padding: 5px 10px;
+.shell-top__right .shell-prefs,
+.shell-top__right .shell-user__trigger {
+    height: 40px;
+}
+
+.shell-top__sep {
+    flex: none;
+    width: 1px;
+    height: 24px;
+    background: var(--border-secondary);
+}
+
+/* --- gorizontal menyu --- */
+.shell-topnav {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.shell-topnav__scroll {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.shell-topnav__scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.shell-topnav__link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: none;
+    height: 40px;
+    padding: 0 var(--spacing-lg);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-tertiary);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--shell-fast) var(--shell-ease),
+    border-color var(--shell-fast) var(--shell-ease),
+    color var(--shell-fast) var(--shell-ease);
+}
+
+.shell-topnav__link svg {
+    flex: none;
+    color: var(--fg-quaternary);
+    transition: color var(--shell-fast) var(--shell-ease);
+}
+
+/* `!important` — global `a:hover` qoidasiga qarshi */
+.shell-topnav__link:not(.is-active):hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-secondary);
+    color: var(--text-primary) !important;
+}
+
+.shell-topnav__link:not(.is-active):hover svg {
+    color: var(--text-secondary);
+}
+
+/* faol — yumshoq yashil fon + yashil chegara */
+.shell-topnav__link.is-active,
+.shell-topnav__link.is-active:hover {
+    background: var(--utility-brand-50);
+    border-color: var(--utility-brand-200);
+    color: var(--utility-brand-700) !important;
+}
+
+.shell-topnav__link.is-active svg {
+    color: var(--utility-brand-700);
+}
+
+.shell-topnav__link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.shell-topnav__arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-full);
+    background: var(--bg-primary);
+    color: var(--fg-tertiary);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+.shell-topnav__arrow:hover {
+    color: var(--text-primary);
+    border-color: var(--border-primary);
+}
+
+.shell-topnav__arrow--left {
+    left: 0;
+}
+
+.shell-topnav__arrow--right {
+    right: 0;
+}
+
+/* --- mavzu + til paneli (Untitled UI "button group") --- */
+.shell-prefs {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: var(--shell-control);
+    padding: 3px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+}
+
+.shell-prefs__globe {
+    flex: none;
+    margin: 0 4px 0 7px;
+    color: var(--fg-quaternary);
+}
+
+.shell-prefs__divider {
+    flex: none;
+    width: 1px;
+    height: 18px;
+    margin: 0 6px 0 4px;
+    background: var(--border-secondary);
+}
+
+.shell-prefs--lang .shell-seg__item.is-active {
+    background: var(--utility-brand-50);
+    border-color: var(--utility-brand-200);
+    box-shadow: none;
+    color: var(--utility-brand-700);
+}
+
+.shell-seg {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 100%;
+}
+
+.shell-seg__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-width: 34px;
+    padding: 0 var(--spacing-md);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.02em;
+    color: var(--fg-quaternary);
+    cursor: pointer;
+    transition: background var(--shell-fast) var(--shell-ease),
+    color var(--shell-fast) var(--shell-ease),
+    box-shadow var(--shell-fast) var(--shell-ease);
+}
+
+.shell-seg--icon .shell-seg__item {
+    width: 34px;
+    padding: 0;
+}
+
+.shell-seg__item:hover:not(.is-active) {
+    color: var(--text-primary);
+}
+
+/* faol — ko'tarilgan "tugmacha" */
+.shell-seg__item.is-active {
+    background: var(--bg-primary);
+    border-color: var(--border-secondary);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+}
+
+.shell-seg--icon .shell-seg__item.is-active {
+    color: var(--fg-brand-primary);
+}
+
+.shell-seg__item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* --- foydalanuvchi menyusi --- */
+.shell-user {
+    position: relative;
+}
+
+.shell-user__trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    height: var(--shell-control);
+    padding: 3px var(--spacing-md) 3px 3px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--shell-fast) var(--shell-ease),
+    border-color var(--shell-fast) var(--shell-ease),
+    box-shadow var(--shell-fast) var(--shell-ease);
+}
+
+.shell-user__trigger:hover,
+.shell-user__trigger.is-open {
+    background: var(--bg-primary);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.shell-user__trigger:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--focus-ring);
+}
+
+.shell-user__avatar {
+    position: relative;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 1);
-    border: 1px solid rgba(208, 213, 221, 1);
-    /*box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);*/
-    cursor: pointer;
-
-    border-radius: 8px;
-    border: 1px solid #D5D7DA;
-    background: #FFF;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--utility-brand-50);
+    box-shadow: inset 0 0 0 1px var(--utility-brand-200);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--utility-brand-700);
 }
 
-.monitoring_header_user img {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    margin-right: 5px;
-}
-.monitoring_header_user .monitoring_header_user_icon {
-    width: 25px;
-    height: 25px;
-    border-radius: 50%;
-    margin-right: 5px;
+/* avatar burchagidagi onlayn nuqtasi */
+.shell-user__avatar::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--bg-secondary);
+    border-radius: var(--radius-full);
+    background: var(--fg-success-primary);
 }
 
-.monitoring_header_user svg {
+.shell-user__trigger:hover .shell-user__avatar::after,
+.shell-user__trigger.is-open .shell-user__avatar::after {
+    border-color: var(--bg-primary);
+}
+
+.shell-user__avatar--lg {
+    width: 44px;
+    height: 44px;
+    font-size: 15px;
+}
+
+.shell-user__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.shell-user__name {
+    max-width: 170px;
+    font-size: 13px;
+    line-height: 17px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shell-user__role {
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+
+.shell-user__chevron {
+    flex: none;
+    color: var(--fg-quaternary);
+    transition: transform var(--shell-base) var(--shell-ease);
+}
+
+.shell-user__trigger.is-open .shell-user__chevron {
+    transform: rotate(180deg);
+}
+
+.shell-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1200;
+    width: 280px;
+    padding: 4px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-lg);
+    transform-origin: top right;
+    animation: shell-menu-in var(--shell-base) var(--shell-ease);
+}
+
+@keyframes shell-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shell-menu {
+        animation: none;
+    }
+}
+
+.shell-menu__head {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+    margin-bottom: 4px;
+    padding: 10px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+}
+
+.shell-menu__head-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.shell-menu__head-name {
     font-size: 14px;
-    font-weight: 600;
+    line-height: 20px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.monitoring_header_user p {
-    font-family: Inter;
+.shell-menu__head-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+.shell-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--utility-brand-200);
+    border-radius: var(--radius-full);
+    background: var(--utility-brand-50);
+    font-size: 12px;
+    font-weight: var(--font-weight-medium);
+    color: var(--utility-brand-700);
+    white-space: nowrap;
+}
+
+.shell-role-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--fg-success-primary);
+}
+
+.shell-menu__head-login {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shell-menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    height: 40px;
+    padding: 0 var(--spacing-sm);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    font-family: inherit;
     font-size: 14px;
-    font-weight: 600;
-    line-height: 15px;
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
     text-align: left;
-    margin-right: 5px;
+    cursor: pointer;
+    transition: background var(--shell-fast) var(--shell-ease),
+    border-color var(--shell-fast) var(--shell-ease),
+    color var(--shell-fast) var(--shell-ease);
 }
 
-/*admin*/
+.shell-menu__item:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border-secondary);
+    color: var(--text-primary);
+}
 
+.shell-menu__item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
 
-/*mobile*/
-@media (max-width: 576px) {
-    .languages_item{
-     margin-left: 10px;
+.shell-menu__item-icon {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--fg-quaternary);
+}
+
+.shell-menu__item--danger {
+    color: var(--text-error-primary);
+}
+
+.shell-menu__item--danger .shell-menu__item-icon {
+    border-color: var(--utility-error-200);
+    background: var(--utility-error-50);
+    color: var(--utility-error-700);
+}
+
+.shell-menu__item--danger:hover {
+    background: var(--bg-error-primary);
+    border-color: var(--utility-error-200);
+    color: var(--text-error-primary);
+}
+
+/* ==========================================================================
+   Responsiv
+   ========================================================================== */
+
+@media (max-width: 1370px) {
+    .shell-top {
+        gap: var(--spacing-xl);
     }
-    .full_content {
-        height: 100vh;
-        display: block;
-    }
 
-    .full_content_left {
-        /*display: none;*/
-        position: absolute;
-        bottom: 24px;
-        right: 24px;
-        background: transparent;
+    .shell-user__name {
+        max-width: 140px;
     }
+}
 
-    .saidbar_inner {
+@media (max-width: 1200px) {
+    .shell-user__text {
         display: none;
     }
 
+    .shell-user__trigger {
+        padding: 3px var(--spacing-sm) 3px 3px;
+    }
+}
 
-    .full_content_right {
-        height: 100%;
+@media (max-width: 860px) {
+    .shell-top__logo svg {
+        height: 26px;
     }
 
-    .header {
+    .shell-topnav__label,
+    .shell-prefs__globe,
+    .shell-prefs__divider {
+        display: none;
+    }
+}
+
+
+/* yorug' hududdagi sahifa kontent balandligini to'liq egallaydi */
+.light-zone-page {
+    height: 100%;
+    background: var(--bg-primary);
+}
+
+/* menyu bandlari orasidagi ajratgich */
+.shell-menu__divider {
+    display: block;
+    height: 1px;
+    margin: 4px 2px;
+    background: var(--border-secondary);
+}
+
+/* --- profil paneli: foydalanuvchi kartochkasi --- */
+.pf-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-xl);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
+    background: var(--bg-secondary);
+}
+
+.pf-card__avatar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-lg);
+    background: var(--utility-brand-50);
+    box-shadow: inset 0 0 0 1px var(--utility-brand-200);
+    font-size: 18px;
+    font-weight: var(--font-weight-semibold);
+    color: var(--utility-brand-700);
+}
+
+.pf-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
+.pf-card__text strong {
+    font-size: var(--font-size-text-md);
+    line-height: var(--line-height-text-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pf-card__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    min-width: 0;
+}
+
+.pf-card__login {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* ==========================================================================
+   Telefon: pastki navigatsiya, ixcham header, mavzu/til menyuda
+   ========================================================================== */
+
+.shell-tabbar,
+.shell-menu__prefs {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    :root {
+        --shell-top-h: 56px;
+        --shell-tabbar-h: calc(60px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .shell-top {
+        grid-template-columns: minmax(0, 1fr) max-content;
+        gap: var(--spacing-md);
+        padding: 0 var(--spacing-lg);
+    }
+
+    /* logotip qaytadi (560px dagi yashirish bekor), menyu pastga ko'chadi */
+    .shell-top__logo {
         display: flex;
-        flex-direction: row;
+        height: 26px;
+        padding-right: 0;
+        border-right: 0;
+    }
+
+    .shell-top__logo svg {
+        height: 26px;
+    }
+
+    .shell-topnav,
+    .shell-top__right > .shell-prefs,
+    .shell-top__right > .shell-top__sep {
+        display: none;
+    }
+
+    .shell-user__trigger {
+        height: 40px;
+        padding: 3px 6px 3px 3px;
+    }
+
+    .shell-user__text {
+        display: none;
+    }
+
+    /* menyu ekran kengligidan oshmaydi */
+    .shell-menu {
+        position: fixed;
+        top: calc(var(--shell-top-h) + 6px);
+        right: var(--spacing-md);
+        left: var(--spacing-md);
+        width: auto;
+    }
+
+    /* mavzu va til — menyu ichida, bitta qatorda */
+    .shell-menu__prefs {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        margin-bottom: 4px;
+        padding: 6px;
+        border: 1px solid var(--border-secondary);
+        border-radius: var(--radius-md);
+    }
+
+    .shell-menu__prefs .shell-prefs {
+        height: 38px;
+    }
+
+    .shell-menu__prefs {
         justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        height: 68px;
-        background: #ffffff;
-        padding: 0 14px;
-        position: sticky;
-        top: 0;
-        left: 0;
-        z-index : 1000;
     }
 
-    .header_left_inner {
+    .shell-menu__prefs .shell-prefs__globe,
+    .shell-menu__prefs .shell-prefs__divider {
+        display: inline-block;
+    }
+
+    /* ikki guruh orasidagi ajratgich menyuda kerak emas */
+    .shell-menu__prefs .shell-top__sep {
         display: none;
     }
 
-    .header_left_inner_mobile {
-        /*display: block;*/
+    /* pastki navigatsiya */
+    .shell-tabbar {
+        display: grid;
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
+        flex: none;
+        height: var(--shell-tabbar-h);
+        padding: 6px var(--spacing-sm) calc(6px + env(safe-area-inset-bottom, 0px));
+        border-top: 1px solid var(--border-secondary);
+        background: var(--bg-primary);
+        font-family: var(--font-family-body);
+    }
+
+    .shell-tabbar__item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        min-width: 0;
+        border-radius: var(--radius-md);
+        color: var(--text-quaternary);
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .shell-tabbar__icon {
         display: flex;
         align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 28px;
+        border-radius: var(--radius-full);
+        transition: background-color 150ms, color 150ms;
     }
 
-    .badge_admin {
-        display: none;
+    .shell-tabbar__label {
+        max-width: 100%;
+        font-size: 11px;
+        line-height: 14px;
+        font-weight: var(--font-weight-semibold);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .badge_admin_mobile {
-        display: block;
+    .shell-tabbar__item.is-active {
+        color: var(--utility-brand-700) !important;
     }
 
-    .badge_admin_item {
-        background: transparent;
-    }
-    .content {
-        height: calc(100vh - 68px);
-        /*margin-top: 68px;*/
-        overflow-y: auto;
-        z-index: 100;
+    .shell-tabbar__item.is-active .shell-tabbar__icon {
+        background: var(--utility-brand-50);
+        box-shadow: inset 0 0 0 1px var(--utility-brand-200);
     }
 
+    .shell-tabbar__item:hover {
+        color: var(--text-secondary);
+    }
 }
-

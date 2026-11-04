@@ -30,11 +30,7 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    const { status } = error.response;
-
-    if (status === 401) {
-    }
-
+    // network errors / cancelled requests have no `response`; callers handle 401 themselves
     return Promise.reject(error);
   }
 );
